@@ -20,18 +20,29 @@ Alternatively, `pnpm dev:spacetime` publishes, generates bindings, watches backe
 
 Database: `hackutd2026` on `127.0.0.1:3000`. Ignored `.spacetime-data/` holds local database state.
 
-## User model
+## Basic hackathon auth
 
-`spacetimedb/src/index.ts` defines a private `users` table:
+Models live in `spacetimedb/src/models/` and are registered in `src/index.ts`:
 
-- `identity`: primary key, taken from the token-authenticated caller (`ctx.sender`).
-- `displayName`: trimmed, 1 to 80 characters.
-- `createdAt`: server timestamp, preserved when the profile changes.
+- `user.ts`: private users table keyed by normalized username, with plaintext password, display name, and creation timestamp.
+- `session.ts`: private sessions table mapping a SpacetimeDB caller identity to the logged-in username.
 
-`save_profile` creates or updates the caller's profile. `delete_profile` deletes only the caller's profile; it does not revoke authentication tokens or delete an identity-provider account.
-`SELECT * FROM my_profile` returns only the caller's own profile. Other clients cannot read the private users table or supply an identity to modify somebody else's row.
+This intentionally uses plaintext password storage and comparison for the hackathon demo. Use throwaway demo credentials. No external auth provider or frontend sign-in is configured.
 
-SpacetimeDB verifies identity tokens; this module stores profiles, not passwords. Local development can use SpacetimeDB-issued identity tokens. Persist and reuse the same token to retain the same user identity. Email/password or social sign-in still requires a future SpacetimeAuth/OIDC integration. No sign-in UI is wired up yet.
+Reducers:
+
+Auth inputs are validated and normalized with Zod schemas in `spacetimedb/src/validation/auth.ts`.
+
+- `signup({ username, password, displayName })`: creates the account and logs the caller in. Usernames are case-insensitive, 3-32 letters/numbers/underscores. Passwords are 1-128 characters and compared exactly. Display names are trimmed, 1-80 characters.
+- `login({ username, password })`: verifies credentials and logs in the caller. The same account can log in from another SpacetimeDB identity/device.
+- `logout()`: removes the caller's session.
+- `saveProfile({ displayName })`: updates the logged-in account's display name.
+- `deleteProfile()`: deletes the logged-in account and revokes all its sessions.
+
+These are generated TypeScript method names; CLI/HTTP reducer names are `signup`, `login`, `logout`, `save_profile`, and `delete_profile`.
+`SELECT * FROM my_profile` returns only the logged-in account's username, display name, and creation time. Passwords and session rows are not exposed to ordinary clients.
+
+SpacetimeDB's token identifies the caller/connection, while the sessions table determines which account that caller logged into. Keep that token in the client between requests; a fresh identity must log in. Sessions persist until logout or account deletion and have no automatic expiry in this demo.
 
 ## Checks
 
@@ -42,6 +53,7 @@ pnpm generate:spacetime
 pnpm build:web
 ```
 
-With the local server running and this module published, run `powershell -NoProfile -File scripts/test-profiles.ps1` to test profile creation, updates, validation, privacy, isolation between two identities, and deletion. Test profiles are removed afterward.
+With the local server running and this module published, run `powershell -NoProfile -File scripts/test-auth.ps1` to test signup, login, invalid credentials, profile updates, private-table access, logout, and account/session deletion across multiple callers. Test accounts are removed afterward.
 
 See the official [authentication guidance](https://spacetimedb.com/docs/intro/faq/) and [per-user views](https://spacetimedb.com/docs/functions/views/).
+
