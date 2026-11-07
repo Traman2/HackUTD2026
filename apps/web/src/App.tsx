@@ -1,20 +1,13 @@
+import { Navigate, Route, Routes, BrowserRouter } from 'react-router-dom'
+import Login from './pages/login'
 
-import { useSpacetimeDB } from 'spacetimedb/react'
-import { databaseName } from './lib/spacetime'
-
-function App() {
-  const { isActive, connectionError } = useSpacetimeDB()
-
+export default function App() {
   return (
-    <>
-      <p>Testing</p>
-      <p role="status">
-        {isActive ? `Connected to ${databaseName}` : connectionError
-          ? 'Unable to connect. Check that SpacetimeDB is running.'
-          : 'Connecting to database…'}
-      </p>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
-
-export default App

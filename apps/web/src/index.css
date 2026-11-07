@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
@@ -128,3 +128,12 @@
     @apply font-sans;
     }
 }
+/* Reusable light grid background for the login page. */
+.login-grid-bg {
+  background-color: #faf9f6;
+  background-image:
+    linear-gradient(to right, rgba(55, 53, 47, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(55, 53, 47, 0.035) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
