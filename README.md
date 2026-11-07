@@ -15,7 +15,7 @@ pnpm publish:spacetime
 pnpm dev:web
 ```
 
-The frontend is the Vite + React starter screen and does not connect to the database yet.
+The frontend connects using the SpacetimeDB React SDK and shows connection status. Vite reads `VITE_SPACETIMEDB_HOST` and `VITE_SPACETIMEDB_DB_NAME` from the repository root `.env.local`. The connection token is saved in browser local storage to preserve caller identity across reloads. Components can access connection state using `useSpacetimeDB()`. Connecting does not invoke auth reducers.
 Alternatively, `pnpm dev:spacetime` publishes, generates bindings, watches backend changes, and launches Vite together.
 
 Database: `hackutd2026` on `127.0.0.1:3000`. Ignored `.spacetime-data/` holds local database state.
@@ -52,8 +52,6 @@ pnpm build:spacetime
 pnpm generate:spacetime
 pnpm build:web
 ```
-
-With the local server running and this module published, run `powershell -NoProfile -File scripts/test-auth.ps1` to test signup, login, invalid credentials, profile updates, private-table access, logout, and account/session deletion across multiple callers. Test accounts are removed afterward.
 
 See the official [authentication guidance](https://spacetimedb.com/docs/intro/faq/) and [per-user views](https://spacetimedb.com/docs/functions/views/).
 
