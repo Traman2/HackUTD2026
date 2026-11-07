@@ -1,0 +1,9 @@
+{
+  "database": "hackutd2026",
+  "server": "local",
+  "module-path": "./spacetimedb",
+  "generate": [
+    { "language": "typescript", "out-dir": "./apps/web/src/module_bindings" }
+  ],
+  "dev": { "run": "pnpm dev:web" }
+}
