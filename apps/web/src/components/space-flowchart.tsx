@@ -37,12 +37,12 @@ function ComponentCard({ data, selected }: NodeProps<ComponentNode>) {
 const nodeTypes = { component: ComponentCard };
 const NO_RISK: RiskAssessment["overview"] = {};
 
-const toolbarButton = "inline-flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 font-medium text-[#37352f] transition-colors hover:bg-[#f3f2ee] focus-visible:outline-2 focus-visible:outline-[#b9d8f3] disabled:cursor-default disabled:opacity-50";
+const toolbarButton = "inline-flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-default disabled:opacity-50";
 
 /** Runs the risk agent on demand and summarizes its latest result. */
 function RiskControl({ risk, disabled, onOpenRisks }: { risk: SpaceRisk; disabled: boolean; onOpenRisks?: () => void }) {
   const { result, assessment, busy, error, analyze } = risk;
-  if (busy) return <span role="status" className="inline-flex items-center gap-1.5 py-0.5 text-[#37352f]" title={result?.stage || "Starting risk analysis"}>
+  if (busy) return <span role="status" className="inline-flex items-center gap-1.5 py-0.5 text-foreground" title={result?.stage || "Starting risk analysis"}>
     <LoaderCircle aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" />{result?.stage || "Analyzing risk..."}
   </span>;
   const current = assessment && !result?.stale;
@@ -56,9 +56,9 @@ function RiskControl({ risk, disabled, onOpenRisks }: { risk: SpaceRisk; disable
     </button> : null}
     <button type="button" onClick={analyze} disabled={disabled} className={toolbarButton} title={disabled ? "Wait for the flowchart to finish" : current ? "Run the risk agent again" : "Run the risk agent on this flowchart"}>
       {current ? <><RefreshCw aria-hidden="true" className="size-3" /><span className="sr-only">Re-run risk analysis</span></>
-        : <><ShieldAlert aria-hidden="true" className="size-3.5 text-[#b4372c]" />{assessment ? "Risk out of date · Re-run" : "Analyze risk"}</>}
+        : <><ShieldAlert aria-hidden="true" className="size-3.5 text-ds-red-900" />{assessment ? "Risk out of date · Re-run" : "Analyze risk"}</>}
     </button>
-    {error && <span role="alert" className="max-w-64 truncate text-[#b4372c]" title={error}>{error}</span>}
+    {error && <span role="alert" className="max-w-64 truncate text-ds-red-900" title={error}>{error}</span>}
   </span>;
 }
 
@@ -78,9 +78,9 @@ function layout(graph: SpaceGraph, documents: GraphResult["documents"], onPrevie
   const edges: Edge[] = graph.edges.map(edge => ({
     id: edge.id, source: edge.source, target: edge.target, type: "default", label: edge.label,
     ariaLabel: `${edge.label}. ${edge.evidence.map(source => `${filenames[source.documentId]}, page ${source.page}: ${source.detail}`).join("; ")}`,
-    style: { stroke: "#77ae91", strokeWidth: 2, strokeDasharray: "2 5" },
-    markerEnd: { type: MarkerType.ArrowClosed, color: "#77ae91", width: 18, height: 18 },
-    labelStyle: { fill: "#fff", fontSize: 10, fontWeight: 500 }, labelBgStyle: { fill: "#6ca780" }, labelBgPadding: [7, 4], labelBgBorderRadius: 5,
+    style: { stroke: "#8f8f8f", strokeWidth: 1.5, strokeDasharray: "4 4" },
+    markerEnd: { type: MarkerType.ArrowClosed, color: "#8f8f8f", width: 16, height: 16 },
+    labelStyle: { fill: "#fff", fontSize: 10, fontWeight: 500, fontFamily: "var(--font-mono)" }, labelBgStyle: { fill: "#171717" }, labelBgPadding: [8, 4], labelBgBorderRadius: 999,
   }));
   return { nodes, edges };
 }
@@ -117,11 +117,11 @@ export function SpaceFlowchart({ graph, documents, onPreview, status = "ready", 
     <ReactFlow nodes={nodes} edges={initial.edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} onInit={setInstance}
       onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest("button")) onSelectNode?.(node.id); }} elementsSelectable={false} fitView fitViewOptions={{ padding: 0.2, maxZoom: 1 }} minZoom={0.1} maxZoom={2.5} nodesConnectable={false} edgesReconnectable={false} deleteKeyCode={null}>
       <Controls showInteractive={false} />
-      <Panel position="top-left" className="flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 px-3 py-1.5 text-[11px] text-neutral-500 shadow-sm">
-        <span className="py-0.5">{status === "processing" ? "Building graph · " : status === "failed" ? "Incomplete graph · " : ""}{graph.nodes.length} components · {graph.edges.length} relationships</span>
-        {risk && <><span aria-hidden="true" className="h-4 w-px bg-neutral-200" /><RiskControl risk={risk} disabled={status === "processing"} onOpenRisks={onOpenRisks} /></>}
+      <Panel position="top-left" className="flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-2 rounded-lg bg-white/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-geist-md backdrop-blur-sm">
+        <span className="py-0.5 font-mono">{status === "processing" ? "Building graph · " : status === "failed" ? "Incomplete graph · " : ""}{graph.nodes.length} components · {graph.edges.length} relationships</span>
+        {risk && <><span aria-hidden="true" className="h-4 w-px bg-border" /><RiskControl risk={risk} disabled={status === "processing"} onOpenRisks={onOpenRisks} /></>}
       </Panel>
-      {onRegenerate && <Panel position="top-right" className="rounded-md border border-neutral-200 bg-white/95 px-1.5 py-1 text-[11px] shadow-sm">
+      {onRegenerate && <Panel position="top-right" className="rounded-lg bg-white/90 px-1.5 py-1 text-[11px] shadow-geist-md backdrop-blur-sm">
         <button type="button" onClick={onRegenerate} disabled={regenerating || regenerateDisabled} aria-busy={regenerating} className={toolbarButton} title={regenerating ? "Regenerating flowchart" : "Regenerate the flowchart from this space's documents"}>
           {regenerating ? <LoaderCircle aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" /> : <RotateCcw aria-hidden="true" className="size-3" />}
           {regenerating ? "Regenerating..." : "Regenerate"}

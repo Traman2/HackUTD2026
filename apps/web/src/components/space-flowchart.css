@@ -1,25 +1,31 @@
 .space-flowchart.login-grid-bg { background-image: linear-gradient(to right, rgba(55, 53, 47, 0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(55, 53, 47, 0.07) 1px, transparent 1px); }
 .space-flowchart .react-flow { background: transparent; }
-.flow-component { position: relative; width: 300px; height: 270px; padding: 18px 18px 12px; border: 1px solid #e7eaed; border-radius: 4px; background: #fff; box-shadow: 0 2px 7px #2634450a; color: #30343b; }
-.flow-component.is-selected { outline: 2px solid #83a5cb; outline-offset: 2px; }
-.flow-component h3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 19px; font-weight: 600; }
-.flow-component-category { display: flex; align-items: center; gap: 5px; margin-top: 8px; padding-bottom: 9px; border-bottom: 1px solid #f0f1f3; color: #92969d; font-size: 10px; text-transform: capitalize; }
-.flow-component-description { max-height: 68px; overflow-y: auto; margin-top: 9px; font-size: 11px; line-height: 17px; color: #70757d; }
-.flow-component-source-heading { position: absolute; bottom: 86px; left: 18px; color: #92969d; font-size: 9px; }
+.flow-component { position: relative; width: 300px; height: 270px; padding: 18px 18px 12px; border-radius: 10px; background: #fff; box-shadow: 0 0 0 1px #00000014, 0px 2px 2px #0000000a; color: #171717; transition: box-shadow 150ms ease; }
+.flow-component:hover { box-shadow: 0 0 0 1px #00000024, 0px 2px 2px #0000000a, 0px 8px 16px -4px #0000000f; }
+.flow-component.is-selected { box-shadow: 0 0 0 1px #171717, 0 0 0 4px #0000000f, 0px 8px 16px -4px #0000000f; }
+.flow-component h3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.flow-component-category { display: flex; align-items: center; gap: 5px; margin-top: 8px; padding-bottom: 9px; border-bottom: 1px solid #ebebeb; color: #8f8f8f; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+.flow-component-description { max-height: 68px; overflow-y: auto; margin-top: 9px; font-size: 11px; line-height: 17px; color: #4d4d4d; }
+.flow-component-source-heading { position: absolute; bottom: 86px; left: 18px; color: #8f8f8f; font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; }
 .flow-component-sources { position: absolute; bottom: 18px; left: 18px; right: 18px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; max-height: 60px; overflow-y: auto; }
-.flow-component-sources button { display: flex; align-items: center; gap: 4px; flex-shrink: 0; max-width: 180px; border-radius: 3px; background: #f4f6f8; padding: 3px 5px; color: #818894; font-size: 9px; cursor: pointer; }
+.flow-component-sources button { display: flex; align-items: center; gap: 4px; flex-shrink: 0; max-width: 180px; border-radius: 999px; border: 1px solid #ebebeb; background: #fff; padding: 2px 7px; color: #4d4d4d; font-size: 9px; cursor: pointer; transition: border-color 120ms, color 120ms; }
 .flow-component-sources span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.flow-component-sources button:hover { background: #e8edf3; color: #384f6b; }
-.flow-component-sources button:focus-visible { outline: 2px solid #83a5cb; outline-offset: -2px; }
+.flow-component-sources button:hover { border-color: #c9c9c9; color: #171717; }
+.flow-component-sources button:focus-visible { outline: 2px solid hsl(212 100% 48%); outline-offset: 1px; }
 .flow-component-accent { position: absolute; bottom: 0; left: 18px; width: 42px; height: 3px; border-radius: 3px 3px 0 0; }
-.space-flowchart .react-flow__handle { width: 5px; height: 5px; border: 1px solid #fff; background: #b6bdc5; }
-.space-flowchart .react-flow__controls { overflow: hidden; border: 1px solid #e1e5e9; border-radius: 6px; box-shadow: 0 2px 6px #2634450a; }
-.space-flowchart .react-flow__controls-button { background: #fff; border-color: #edf0f3; color: #646b73; }
+.space-flowchart .react-flow__handle { width: 6px; height: 6px; border: 1px solid #fff; background: #a8a8a8; }
+.space-flowchart .react-flow__controls { overflow: hidden; border-radius: 8px; box-shadow: 0 0 0 1px #00000014, 0px 2px 2px #0000000a, 0px 8px 8px -8px #0000000a; }
+.space-flowchart .react-flow__controls-button { background: #fff; border-color: #ebebeb; color: #4d4d4d; }
+.space-flowchart .react-flow__controls-button:hover { background: #f2f2f2; color: #171717; }
 .space-flowchart .react-flow__node { cursor: pointer; }
-.flow-component:hover { border-color: #d3d7dc; }
-.flow-component-risk { position: absolute; top: -10px; right: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border: 1px solid #e7eaed; border-radius: 999px; background: #fff; color: #4b4f56; font-size: 9px; font-weight: 600; box-shadow: 0 1px 3px #2634450f; }
+.flow-component-risk { position: absolute; top: -10px; right: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; background: #fff; color: #171717; font-size: 9px; font-weight: 600; box-shadow: 0 0 0 1px #00000014, 0px 2px 2px #0000000a; }
 .flow-component-risk-dot { width: 7px; height: 7px; border-radius: 999px; }
-.flow-component.risk-critical { border: 2px solid #e5877e; }
-.flow-component.risk-high { border: 2px solid #eda36c; }
-.flow-component.risk-elevated { border: 2px solid #e6c463; }
-.flow-component.risk-propagated { border-style: dashed; }
+/* Risk replaces the hairline ring with a colored one; dashed means inherited from upstream. */
+.flow-component.risk-critical { box-shadow: 0 0 0 2px hsl(358 75% 59% / 0.75), 0px 2px 2px #0000000a; }
+.flow-component.risk-high { box-shadow: 0 0 0 2px hsl(24 94% 53% / 0.7), 0px 2px 2px #0000000a; }
+.flow-component.risk-elevated { box-shadow: 0 0 0 2px hsl(39 100% 57% / 0.8), 0px 2px 2px #0000000a; }
+.flow-component.risk-propagated { box-shadow: 0px 2px 2px #0000000a; outline: 2px dashed; outline-offset: 0; }
+.flow-component.risk-propagated.risk-critical { outline-color: hsl(358 75% 59% / 0.75); }
+.flow-component.risk-propagated.risk-high { outline-color: hsl(24 94% 53% / 0.7); }
+.flow-component.risk-propagated.risk-elevated { outline-color: hsl(39 100% 57% / 0.8); }
+.flow-component.is-selected[class*="risk-"] { box-shadow: 0 0 0 2px #171717, 0 0 0 5px #0000000f; }

@@ -1,9 +1,28 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { useReducer } from "spacetimedb/react";
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { reducers } from "@/module_bindings";
+
+/** Initials on a gradient chosen from the name, like Vercel's account avatars. */
+export function Avatar({ name, className = "size-7" }: { name: string; className?: string }) {
+  const initials = name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase() ?? "").join("") || "?";
+  let hash = 0;
+  for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  const hue = hash % 360;
+  return (
+    <span aria-hidden="true" className={`inline-flex shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white ring-1 ring-black/5 ${className}`}
+      style={{ background: `linear-gradient(135deg, hsl(${hue} 80% 62%), hsl(${(hue + 50) % 360} 80% 48%))` }}>
+      {initials}
+    </span>
+  );
+}
+
+/** Slash divider used between breadcrumb items. */
+export function Slash() {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5 shrink-0 text-border-strong" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M16.88 3.549L7.12 20.451" /></svg>;
+}
 
 export function WorkspaceNavbar({ displayName, disabled = false }: { displayName?: string; disabled?: boolean }) {
   const logout = useReducer(reducers.logout);
@@ -19,21 +38,27 @@ export function WorkspaceNavbar({ displayName, disabled = false }: { displayName
   }
 
   return (
-    <header className="flex min-h-16 flex-wrap items-center justify-between gap-4 border-b border-[#37352f]/10 bg-[#faf9f6]/90 px-5 py-3 sm:px-8">
-      <Link to="/spaces" aria-disabled={disabled} onClick={event => { if (disabled) event.preventDefault(); }} className="inline-flex items-center gap-2.5 rounded-sm focus-visible:outline-2 focus-visible:outline-[#b9d8f3]" aria-label="REALestate home">
-        <img src="/logo.svg" alt="" width={32} height={32} className="size-8 object-contain" />
-        <span className="text-[13px] font-bold">REALestate</span>
-      </Link>
-      {displayName && (
-        <div className="flex flex-wrap items-center gap-4">
-          {error && <p role="alert" className="text-xs text-[#d92323]">{error}</p>}
-          <span className="max-w-40 truncate text-xs text-[#78766e]">{displayName}</span>
-          <Button variant="ghost" disabled={disabled || signingOut} onClick={signOut} className="text-xs hover:bg-[#37352f]/5 focus-visible:ring-[#b9d8f3]">
-            <LogOut aria-hidden="true" className="size-3.5" />
-            {signingOut ? "Signing out..." : "Sign out"}
-          </Button>
-        </div>
-      )}
+    <header className="sticky top-0 z-30 border-b border-border bg-[#faf9f6]/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6 sm:px-10">
+        <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2">
+          <BrandMark to="/spaces" disabled={disabled} onClick={event => { if (disabled) event.preventDefault(); }} />
+          <Slash />
+          <span aria-current="page" className="truncate text-sm font-medium">Spaces</span>
+        </nav>
+        {displayName && (
+          <div className="flex min-w-0 items-center gap-3">
+            {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+            <div className="hidden min-w-0 items-center gap-2 sm:flex">
+              <Avatar name={displayName} />
+              <span className="max-w-40 truncate text-sm text-muted-foreground">{displayName}</span>
+            </div>
+            <Button variant="outline" size="sm" disabled={disabled || signingOut} onClick={signOut} className="bg-white">
+              <LogOut aria-hidden="true" />
+              {signingOut ? "Signing out..." : "Sign out"}
+            </Button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }

@@ -10,7 +10,8 @@ import { SpaceFilesList } from "@/components/space-files-list";
 import { SpaceFlowchartView } from "@/components/space-flowchart-view";
 import { SpaceInsightsView } from "@/components/space-insights-view";
 import { SpaceTicketsView } from "@/components/space-tickets-view";
-import { SpaceSidebar, type SpaceView } from "@/components/space-sidebar";
+import { SpaceSidebar, viewLabels, type SpaceView } from "@/components/space-sidebar";
+import { Slash } from "@/components/workspace-navbar";
 import { tables } from "@/module_bindings";
 import { useElementWidth, useResizableWidth } from "@/hooks/use-resizable-width";
 import { useSpaceFlowchart } from "@/hooks/use-space-flowchart";
@@ -112,7 +113,7 @@ export default function SpaceDetails() {
     const isNodePanel = panelId === "space-node-panel";
     const panel = isNodePanel ? nodePanel : sidePanel;
     return (
-      <aside id={panelId} aria-label={label} aria-hidden={!open} inert={!open} style={{ width: workspaceWidth ? panel.width : isNodePanel ? "40%" : "25%" }} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); onClose(); } }} className={`absolute inset-y-0 right-0 z-20 flex max-w-full flex-col border-l border-[#e3e3e7] bg-white shadow-lg transition-transform duration-250 ease-out motion-reduce:transition-none ${open ? "translate-x-0" : "translate-x-full"}`}>
+      <aside id={panelId} aria-label={label} aria-hidden={!open} inert={!open} style={{ width: workspaceWidth ? panel.width : isNodePanel ? "40%" : "25%" }} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); onClose(); } }} className={`absolute inset-y-0 right-0 z-20 flex max-w-full flex-col border-l border-border bg-white shadow-geist-menu transition-transform duration-250 ease-out motion-reduce:transition-none ${open ? "translate-x-0" : "translate-x-full"}`}>
         <ResizeHandle label={resizeLabel} controls={panelId} visible={open} handleProps={panel.handleProps} />
         {children}
       </aside>
@@ -122,17 +123,22 @@ export default function SpaceDetails() {
   if (isActive && profileReady && !profile) return <Navigate to="/login" replace />;
 
   return (
-    <div className={`flex h-svh flex-col overflow-hidden bg-[#faf9f6] text-[#37352f] ${sidePanel.resizing || nodePanel.resizing ? "cursor-col-resize select-none" : ""}`}>
-      <header className="flex h-12 shrink-0 items-center border-b border-[#e3e3e7] bg-white">
-        <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#e3e3e7]">
-          <Link to="/spaces" aria-label="Back to your spaces" title="Back to your spaces" className="flex size-8 items-center justify-center rounded-md text-[#78766e] transition-colors hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">
+    <div className={`flex h-svh flex-col overflow-hidden bg-[#faf9f6] text-foreground ${sidePanel.resizing || nodePanel.resizing ? "cursor-col-resize select-none" : ""}`}>
+      <header className="flex h-12 shrink-0 items-center border-b border-border bg-white">
+        <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-border">
+          <Link to="/spaces" aria-label="Back to your spaces" title="Back to your spaces" className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
             <ArrowLeft aria-hidden="true" className="size-4" />
           </Link>
         </div>
-        <h1 className="min-w-0 truncate px-3 text-sm font-semibold tracking-[-0.3px] sm:px-4">
-          {space?.name || (ready ? "Space not found" : "Loading space...")}
-        </h1>
-        {space?.archived && <span className="mr-5 shrink-0 rounded border border-[#e3e3e7] px-2 py-0.5 text-[10px] text-[#78766e]">Archived</span>}
+        <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1.5 px-3 sm:px-4">
+          <Link to="/spaces" className="hidden shrink-0 rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:inline">Spaces</Link>
+          <span className="hidden sm:contents"><Slash /></span>
+          <h1 className="min-w-0 truncate text-sm font-medium tracking-[-0.01em]">
+            {space?.name || (ready ? "Space not found" : "Loading space...")}
+          </h1>
+          {space?.archived && <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Archived</span>}
+          {space && <><Slash /><span aria-current="page" className="shrink-0 text-sm text-muted-foreground">{viewLabels[view]}</span></>}
+        </nav>
       </header>
 
       <div className="flex min-h-0 flex-1">
@@ -148,15 +154,15 @@ export default function SpaceDetails() {
 
           <main aria-label="Space workspace" className="login-grid-bg relative min-w-0 flex-1 overflow-hidden">
             {!ready ? (
-              <div role="status" className="flex h-full min-h-48 items-center justify-center gap-2 px-6 text-sm text-[#78766e]">
+              <div role="status" className="flex h-full min-h-48 items-center justify-center gap-2 px-6 text-sm text-muted-foreground">
                 {!connectionError && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
                 {connectionError ? "Unable to connect. Refresh to try again." : "Loading your space..."}
               </div>
             ) : !space ? (
               <div className="flex h-full min-h-48 flex-col items-center justify-center px-6 text-center">
                 <h2 className="text-lg font-semibold">Space not found</h2>
-                <p className="mt-2 text-xs leading-5 text-[#78766e]">This space is unavailable or does not belong to your account.</p>
-                <Link to="/spaces" className="mt-5 rounded text-xs font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">Return to your spaces</Link>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">This space is unavailable or does not belong to your account.</p>
+                <Link to="/spaces" className="mt-5 rounded text-xs font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring">Return to your spaces</Link>
               </div>
             ) : (
               <>

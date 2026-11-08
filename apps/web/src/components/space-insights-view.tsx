@@ -26,9 +26,9 @@ export function SpaceInsightsView({ active, spaceId, onPreview }: { active: bool
       <section aria-label="Generated insights" className="flex min-w-0 flex-1 flex-col">
         <div className="login-grid-bg min-h-0 flex-1"><GeneratedInsights panel={chat.panel} onPreview={onPreview} /></div>
       </section>
-      <section id="space-chat-panel" aria-label="Chat" style={{ width: containerWidth ? split.width : `${DEFAULT_CHAT_RATIO * 100}%` }} className="relative flex shrink-0 flex-col border-l border-[#e3e3e7]">
+      <section id="space-chat-panel" aria-label="Chat" style={{ width: containerWidth ? split.width : `${DEFAULT_CHAT_RATIO * 100}%` }} className="relative flex shrink-0 flex-col border-l border-border">
         <ResizeHandle label="Resize chat panel" controls="space-chat-panel" visible={active} handleProps={split.handleProps} />
-        {chat.error && <p role="alert" className="border-b bg-red-50 p-3 text-xs text-red-700">{chat.error}</p>}
+        {chat.error && <p role="alert" className="border-b border-ds-red-300 bg-ds-red-100 p-3 text-xs text-ds-red-900">{chat.error}</p>}
         <ChatPanel messages={chat.messages} pending={chat.pending} onSend={chat.send} />
       </section>
     </div>
