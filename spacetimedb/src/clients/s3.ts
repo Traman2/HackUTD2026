@@ -40,6 +40,22 @@ export function storageConfig(ctx: Context) {
   return { bucket, region, accessKeyId, secretAccessKey, sessionToken, prefix };
 }
 
+// Ticket photos may use a dedicated bucket (S3_PHOTO_BUCKET, optionally in
+// S3_PHOTO_REGION) with the same credentials; otherwise they share the PDF
+// bucket under the same prefix. Each photo row records its own bucket/region.
+export function photoStorageConfig(ctx: Context) {
+  const base = storageConfig(ctx);
+  const bucket = ctx.env.S3_PHOTO_BUCKET || base.bucket;
+  const region = ctx.env.S3_PHOTO_REGION || base.region;
+  if (
+    !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(bucket) ||
+    !/^[a-z]{2}(?:-[a-z]+)+-\d+$/.test(region)
+  ) {
+    throw new SenderError("Invalid S3 photo bucket or region configuration.");
+  }
+  return { ...base, bucket, region };
+}
+
 // SigV4 implemented with pure JS hashes so it can run inside the database VM.
 export function presignS3(
   config: ReturnType<typeof storageConfig>,

@@ -34,3 +34,10 @@ export function requireDocument(
   requireSpace(ctx, document.spaceId, active);
   return document;
 }
+
+export function requireTicket(ctx: Context, ticketId: bigint, active = false) {
+  const ticket = ctx.db.tickets.id.find(ticketId);
+  if (!ticket) throw new SenderError("Ticket not found.");
+  requireSpace(ctx, ticket.spaceId, active);
+  return ticket;
+}

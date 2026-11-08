@@ -11,3 +11,7 @@ export {
   request_document_upload, retry_document_upload, confirm_document_upload,
   request_document_download, cancel_document_upload, cleanup_document_upload,
 } from "./controllers/documents";
+export {
+  update_ticket_step, set_ticket_status, request_ticket_photo_upload, confirm_ticket_photo_upload,
+  request_ticket_photo_download, get_ticket, my_tickets, my_ticket_photos,
+} from "./controllers/ticket-work";

@@ -11,7 +11,8 @@ import { riskAssessmentSchema } from "../validation/risk";
 import { ticketInputSchema, ticketsResultSchema } from "../validation/tickets";
 
 type Tx = TransactionCtx<InferSchema<typeof spacetimedb>>;
-const LEASE_MICROS = 120_000_000n;
+// Short lease: if the agent restarts mid-job, the UI reports it within ~45 s.
+const LEASE_MICROS = 45_000_000n;
 const ACTIVE = new Set(["open", "in_progress"]);
 
 export function savedTickets(tx: Tx, spaceId: bigint) {
@@ -41,30 +42,37 @@ export function savedTickets(tx: Tx, spaceId: bigint) {
     error: job?.error ?? null,
     generatedAt: job?.generatedAt?.toDate().toISOString() ?? null,
     lastCreated: job?.lastCreated ?? 0,
-    tickets: rows.map((row) => ({
-      id: String(row.id),
-      problemKey: row.problemKey,
-      title: row.title,
-      kind: row.kind,
-      priority: row.priority,
-      status: row.status,
-      assetLabel: row.assetLabel,
-      equipmentCode: row.equipmentCode,
-      overviewNodeId: row.overviewNodeId ?? null,
-      networkNodeId: row.networkNodeId,
-      summary: row.summary,
-      safetyNotes: row.safetyNotes,
-      sources: row.sources,
-      draftedBy: row.draftedBy,
-      createdAt: row.createdAt.toDate().toISOString(),
-      updatedAt: row.updatedAt.toDate().toISOString(),
-      steps: row.steps.map((step) => ({
-        ...step,
-        result: step.result ?? null,
-        completedAt: step.completedAt?.toDate().toISOString() ?? null,
-      })),
-    })),
+    tickets: rows.map(serializeTicket),
   });
+}
+
+type TicketRow = NonNullable<ReturnType<Tx["db"]["tickets"]["id"]["find"]>>;
+
+// The ticket JSON shape shared by the web view and the mobile app.
+export function serializeTicket(row: TicketRow) {
+  return {
+    id: String(row.id),
+    problemKey: row.problemKey,
+    title: row.title,
+    kind: row.kind,
+    priority: row.priority,
+    status: row.status,
+    assetLabel: row.assetLabel,
+    equipmentCode: row.equipmentCode,
+    overviewNodeId: row.overviewNodeId ?? null,
+    networkNodeId: row.networkNodeId,
+    summary: row.summary,
+    safetyNotes: row.safetyNotes,
+    sources: row.sources,
+    draftedBy: row.draftedBy,
+    createdAt: row.createdAt.toDate().toISOString(),
+    updatedAt: row.updatedAt.toDate().toISOString(),
+    steps: row.steps.map((step) => ({
+      ...step,
+      result: step.result ?? null,
+      completedAt: step.completedAt?.toDate().toISOString() ?? null,
+    })),
+  };
 }
 
 export const TICKET_OPERATIONS = [

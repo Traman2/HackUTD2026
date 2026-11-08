@@ -62,3 +62,35 @@ export const ticketsResultSchema = z.object({
   tickets: z.array(ticketSchema),
 });
 export type TicketsResult = z.infer<typeof ticketsResultSchema>;
+
+// Ticket field work (mobile app / glasses).
+export const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
+export const PHOTO_TYPES = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic" } as const;
+export const photoInputSchema = z.object({
+  stepOrder: z.number().int().min(0).max(8),
+  contentType: z.enum(Object.keys(PHOTO_TYPES) as [keyof typeof PHOTO_TYPES, ...(keyof typeof PHOTO_TYPES)[]], { message: "Photos must be JPEG, PNG, WebP or HEIC." }),
+  sizeBytes: z.number().int().min(100).max(MAX_PHOTO_BYTES, "Photos must be 15 MB or smaller."),
+  // Base64-encoded SHA-256 (32 bytes); S3 validates this against the upload.
+  checksumSha256: z.string().regex(/^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/, "checksumSha256 must be a base64 SHA-256."),
+  caption: z.string().trim().max(300),
+  source: z.enum(["glasses", "phone"]),
+});
+export const stepUpdateSchema = z.object({
+  status: stepStatusSchema,
+  result: z.string().trim().max(500),
+});
+export const ticketStatusUpdateSchema = z.object({ status: ticketStatusSchema, note: z.string().trim().max(500) });
+
+export const ticketPhotoSchema = z.object({
+  id: z.string(), ticketId: z.string(), stepOrder: z.number().int(), caption: z.string(), source: z.string(),
+  contentType: z.string(), sizeBytes: z.number().int(), status: z.enum(["requested", "verified", "failed"]),
+  capturedBy: z.string(), createdAt: z.string(), verifiedAt: z.string().nullable(),
+  // Short-lived signed GET URL for verified photos.
+  url: z.string().nullable(),
+});
+export const ticketEventSchema = z.object({
+  id: z.string(), actor: z.string(), kind: z.string(), stepOrder: z.number().int(), detail: z.string(), createdAt: z.string(),
+});
+export const ticketDetailSchema = z.object({ ticket: ticketSchema, photos: z.array(ticketPhotoSchema), events: z.array(ticketEventSchema) });
+export type TicketPhoto = z.infer<typeof ticketPhotoSchema>;
+export type TicketDetail = z.infer<typeof ticketDetailSchema>;

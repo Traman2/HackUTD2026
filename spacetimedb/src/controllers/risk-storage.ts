@@ -6,7 +6,8 @@ import { withoutDanglingEdges } from "../validation/flowchart";
 import { riskAssessmentSchema, riskResultSchema, type RiskAssessment, type Severity } from "../validation/risk";
 
 type Tx = TransactionCtx<InferSchema<typeof spacetimedb>>;
-const LEASE_MICROS = 120_000_000n;
+// Short lease: if the agent restarts mid-job, the UI reports it within ~45 s.
+const LEASE_MICROS = 45_000_000n;
 
 export function savedRisk(tx: Tx, spaceId: bigint) {
   let row = tx.db.riskAssessments.spaceId.find(spaceId);

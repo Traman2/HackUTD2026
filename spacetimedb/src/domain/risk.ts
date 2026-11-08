@@ -212,7 +212,7 @@ export function rankFlags(input: RiskInput, risks: Record<string, NodeRisk>): Ri
       recommendation = `Confirm a contingency for ${risk.label} while ${origin ? nodes.get(origin)?.label ?? "the upstream component" : "the upstream component"} is unresolved.`;
     }
     const summary = kind === "direct"
-      ? risk.reasons.filter(reason => reason.kind === "condition" || reason.kind === "issue").slice(0, 3).map(reason => reason.text.replace(/[.s]+$/, "")).join(". ") + "."
+      ? risk.reasons.filter(reason => reason.kind === "condition" || reason.kind === "issue").slice(0, 3).map(reason => reason.text.replace(/[.\s]+$/, "")).join(". ") + "."
       : top.text;
     flags.push({ id: `f_${risk.nodeId}`.slice(0, 80), nodeId: risk.nodeId, overviewNodeId: overviewOf.get(risk.nodeId) ?? null,
       label: risk.label, severity: risk.severity as RiskFlag["severity"], kind, score,

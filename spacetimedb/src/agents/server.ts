@@ -109,7 +109,7 @@ const server = createServer(async (req, res) => {
             return;
           }
           if (started) {
-            const heartbeat = setInterval(() => { void job.heartbeat().catch(() => {}); }, 30000);
+            const heartbeat = setInterval(() => { void job.heartbeat().catch(() => {}); }, 15000);
             const running = job.run()
               .catch(async error => {
                 await job.fail(generationFailure(error).replace("Graph generation", job.label)).catch(() => {});
