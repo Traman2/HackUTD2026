@@ -1,0 +1,99 @@
+import { Timestamp } from "spacetimedb";
+import { SenderError, t, type InferSchema, type TransactionCtx } from "spacetimedb/server";
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
+import { z } from "zod";
+import spacetimedb from "../schema";
+import { graphResultSchema, graphSchema, validateGraph } from "../validation/flowchart";
+
+type Tx = TransactionCtx<InferSchema<typeof spacetimedb>>;
+export function sourceFingerprint(documents: { id: bigint; checksumSha256: string; storageVersionId?: string; storageKey: string }[]) {
+  return bytesToHex(sha256(utf8ToBytes(JSON.stringify([...documents].sort((a, b) => a.id < b.id ? -1 : 1).map(doc => [String(doc.id), doc.checksumSha256, doc.storageVersionId ?? "", doc.storageKey])))));
+}
+
+export function savedFlowchart(tx: Tx, spaceId: bigint) {
+  let row = tx.db.flowcharts.spaceId.find(spaceId);
+  if (!row) return graphResultSchema.parse({ status: "empty", stale: false, stage: "", error: null, generatedAt: null, graph: null, documents: [] });
+  if (row.status === "processing" && row.leaseUntil.microsSinceUnixEpoch < tx.timestamp.microsSinceUnixEpoch) {
+    row = tx.db.flowcharts.spaceId.update({ ...row, status: "failed", stage: "", error: "Generation was interrupted. Please retry.", updatedAt: tx.timestamp });
+  }
+  const documents = Array.from(tx.db.documents.spaceId.filter(spaceId)).filter(doc => doc.verifiedAt);
+  return graphResultSchema.parse({ status: row.status, stale: !!row.generatedAt && row.fingerprint !== sourceFingerprint(documents),
+    stage: row.stage, error: row.error ?? null, generatedAt: row.generatedAt?.toDate().toISOString() ?? null,
+    graph: row.generatedAt ? { nodes: row.nodes, edges: row.edges } : null, documents: row.documents,
+  });
+}
+
+const serviceRequest = z.object({
+  audience: z.literal("flowchart-store"), namespace: z.string(), owner: z.string(), spaceId: z.string().regex(/^[1-9]\d*$/),
+  jobId: z.string().uuid(), expiresAt: z.number().int(),
+  operation: z.enum(["get", "begin", "stage", "heartbeat", "fail", "save", "checkpoint", "cacheGet", "cacheSave"]),
+  data: z.record(z.string(), z.unknown()),
+});
+
+// Service-authenticated writes do not require a user session on the agent's SDK
+// identity. The shared HMAC key never enters model inputs or browser code.
+export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string(), signature: t.string() }, t.string(), (ctx, input) => {
+  const key = ctx.env.AGENT_API_KEY;
+  if (!key || input.payload.length > 1000000 || !/^[a-f0-9]{64}$/.test(input.signature)) throw new SenderError("Invalid agent authorization.");
+  const expected = bytesToHex(hmac(sha256, utf8ToBytes(key), utf8ToBytes(input.payload)));
+  let difference = 0;
+  for (let i = 0; i < expected.length; i++) difference |= expected.charCodeAt(i) ^ input.signature.charCodeAt(i);
+  if (difference) throw new SenderError("Invalid agent authorization.");
+  const request = serviceRequest.parse(JSON.parse(input.payload));
+  const now = ctx.timestamp.toDate().getTime();
+  if (request.expiresAt < now || request.expiresAt > now + 65000 || request.namespace !== (ctx.env.GRAPH_NAMESPACE || "hackutd2026")) throw new SenderError("Expired or invalid agent authorization.");
+  return ctx.withTx(tx => {
+    const spaceId = BigInt(request.spaceId);
+    const space = tx.db.spaces.id.find(spaceId);
+    if (!space || space.ownerUsername !== request.owner) throw new SenderError("Space not found.");
+    const { operation, data, jobId } = request;
+    if (operation === "get") return JSON.stringify(savedFlowchart(tx, spaceId));
+    const leaseUntil = new Timestamp(tx.timestamp.microsSinceUnixEpoch + 120_000_000n);
+    const row = tx.db.flowcharts.spaceId.find(spaceId);
+    if (operation === "begin") {
+      if (space.archived) throw new SenderError("Space is archived.");
+      if (row?.status === "processing" && row.leaseUntil.microsSinceUnixEpoch > tx.timestamp.microsSinceUnixEpoch) return JSON.stringify({ started: false });
+      const fingerprint = z.string().regex(/^[a-f0-9]{64}$/).parse(data.fingerprint);
+      const documents = Array.from(tx.db.documents.spaceId.filter(spaceId));
+      if (!documents.length || documents.some(doc => !doc.verifiedAt) || sourceFingerprint(documents) !== fingerprint) throw new SenderError("Documents changed. Start generation again.");
+      const value = { spaceId, ownerUsername: space.ownerUsername, status: "processing", stage: "Downloading documents", error: undefined,
+        fingerprint: row?.fingerprint ?? "", requestedFingerprint: fingerprint, jobId, leaseUntil, updatedAt: tx.timestamp,
+        generatedAt: row?.generatedAt, nodes: row?.nodes ?? [], edges: row?.edges ?? [], documents: row?.documents ?? [],
+      };
+      if (row) tx.db.flowcharts.spaceId.update(value); else tx.db.flowcharts.insert(value);
+      return JSON.stringify({ started: true });
+    }
+    if (!row || row.jobId !== jobId || row.status !== "processing") throw new SenderError("This generation job is no longer active.");
+    if (operation === "cacheGet") {
+      const cacheKey = z.string().regex(/^[a-f0-9]{64}$/).parse(data.cacheKey);
+      const cache = tx.db.flowchartPageFindings.cacheKey.find(cacheKey);
+      return cache && cache.spaceId === spaceId && cache.ownerUsername === request.owner ? cache.findingsJson : "null";
+    }
+    if (operation === "cacheSave") {
+      const cacheKey = z.string().regex(/^[a-f0-9]{64}$/).parse(data.cacheKey);
+      const findingsJson = JSON.stringify(data.findings);
+      if (findingsJson.length > 100000) throw new SenderError("Page findings are too large.");
+      const value = { cacheKey, spaceId, ownerUsername: request.owner, findingsJson, createdAt: tx.timestamp };
+      if (tx.db.flowchartPageFindings.cacheKey.find(cacheKey)) tx.db.flowchartPageFindings.cacheKey.update(value); else tx.db.flowchartPageFindings.insert(value);
+    } else if (operation === "stage" || operation === "heartbeat") {
+      const stage = operation === "stage" ? z.string().max(500).parse(data.stage) : row.stage;
+      tx.db.flowcharts.spaceId.update({ ...row, stage, leaseUntil, updatedAt: tx.timestamp });
+    } else if (operation === "fail") {
+      tx.db.flowcharts.spaceId.update({ ...row, status: "failed", error: z.string().max(2000).parse(data.error), updatedAt: tx.timestamp });
+    } else if (operation === "save" || operation === "checkpoint") {
+      const graph = graphSchema.parse(data.graph);
+      const documents = graphResultSchema.shape.documents.parse(data.documents);
+      const actual = Array.from(tx.db.documents.spaceId.filter(spaceId));
+      if (documents.some(doc => !actual.some(source => String(source.id) === doc.id && source.verifiedAt))) throw new SenderError("A source document is no longer available.");
+      validateGraph(graph, new Map(documents.map(doc => [doc.id, doc.pages])));
+      tx.db.flowcharts.spaceId.update({ ...row, nodes: graph.nodes, edges: graph.edges, documents,
+        status: operation === "save" ? "ready" : "processing",
+        stage: operation === "save" ? "" : z.string().max(500).parse(data.stage),
+        error: undefined, fingerprint: row.requestedFingerprint, generatedAt: tx.timestamp, updatedAt: tx.timestamp, leaseUntil,
+      });
+    }
+    return "null";
+  });
+});

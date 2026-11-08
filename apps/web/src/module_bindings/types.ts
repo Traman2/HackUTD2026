@@ -60,6 +60,75 @@ export const Documents = __t.object("Documents", {
 });
 export type Documents = __Infer<typeof Documents>;
 
+export const FlowchartEdge = __t.object("FlowchartEdge", {
+  id: __t.string(),
+  source: __t.string(),
+  target: __t.string(),
+  label: __t.string(),
+  get evidence() {
+    return __t.array(FlowchartEvidence);
+  },
+});
+export type FlowchartEdge = __Infer<typeof FlowchartEdge>;
+
+export const FlowchartEvidence = __t.object("FlowchartEvidence", {
+  documentId: __t.string(),
+  page: __t.u32(),
+  detail: __t.string(),
+});
+export type FlowchartEvidence = __Infer<typeof FlowchartEvidence>;
+
+export const FlowchartNode = __t.object("FlowchartNode", {
+  id: __t.string(),
+  label: __t.string(),
+  category: __t.string(),
+  description: __t.string(),
+  get evidence() {
+    return __t.array(FlowchartEvidence);
+  },
+});
+export type FlowchartNode = __Infer<typeof FlowchartNode>;
+
+export const FlowchartPageFindings = __t.object("FlowchartPageFindings", {
+  cacheKey: __t.string(),
+  spaceId: __t.u64(),
+  ownerUsername: __t.string(),
+  findingsJson: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type FlowchartPageFindings = __Infer<typeof FlowchartPageFindings>;
+
+export const FlowchartSource = __t.object("FlowchartSource", {
+  id: __t.string(),
+  filename: __t.string(),
+  pages: __t.u32(),
+});
+export type FlowchartSource = __Infer<typeof FlowchartSource>;
+
+export const Flowcharts = __t.object("Flowcharts", {
+  spaceId: __t.u64(),
+  ownerUsername: __t.string(),
+  status: __t.string(),
+  stage: __t.string(),
+  error: __t.option(__t.string()),
+  fingerprint: __t.string(),
+  requestedFingerprint: __t.string(),
+  jobId: __t.string(),
+  leaseUntil: __t.timestamp(),
+  generatedAt: __t.option(__t.timestamp()),
+  updatedAt: __t.timestamp(),
+  get nodes() {
+    return __t.array(FlowchartNode);
+  },
+  get edges() {
+    return __t.array(FlowchartEdge);
+  },
+  get documents() {
+    return __t.array(FlowchartSource);
+  },
+});
+export type Flowcharts = __Infer<typeof Flowcharts>;
+
 export const MyDocuments = __t.object("MyDocuments", {});
 export type MyDocuments = __Infer<typeof MyDocuments>;
 

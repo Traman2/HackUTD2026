@@ -45,10 +45,13 @@ import SignupReducer from "./signup_reducer.ts";
 import UpdateSpaceReducer from "./update_space_reducer.ts";
 
 // Import all procedure arg schemas
+import * as AgentFlowchartStoreProcedure from "./agent_flowchart_store_procedure.ts";
 import * as AskAgentProcedure from "./ask_agent_procedure.ts";
 import * as CleanupDocumentUploadProcedure from "./cleanup_document_upload_procedure.ts";
 import * as ConfirmDocumentUploadProcedure from "./confirm_document_upload_procedure.ts";
 import * as CreateSpaceWithIdProcedure from "./create_space_with_id_procedure.ts";
+import * as GenerateSpaceFlowchartProcedure from "./generate_space_flowchart_procedure.ts";
+import * as GetSpaceFlowchartProcedure from "./get_space_flowchart_procedure.ts";
 import * as RequestDocumentDownloadProcedure from "./request_document_download_procedure.ts";
 import * as RequestDocumentUploadProcedure from "./request_document_upload_procedure.ts";
 import * as RetryDocumentUploadProcedure from "./retry_document_upload_procedure.ts";
@@ -100,10 +103,13 @@ const reducersSchema = __reducers(
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
+  __procedureSchema("agent_flowchart_store", AgentFlowchartStoreProcedure.params, AgentFlowchartStoreProcedure.returnType),
   __procedureSchema("ask_agent", AskAgentProcedure.params, AskAgentProcedure.returnType),
   __procedureSchema("cleanup_document_upload", CleanupDocumentUploadProcedure.params, CleanupDocumentUploadProcedure.returnType),
   __procedureSchema("confirm_document_upload", ConfirmDocumentUploadProcedure.params, ConfirmDocumentUploadProcedure.returnType),
   __procedureSchema("create_space_with_id", CreateSpaceWithIdProcedure.params, CreateSpaceWithIdProcedure.returnType),
+  __procedureSchema("generate_space_flowchart", GenerateSpaceFlowchartProcedure.params, GenerateSpaceFlowchartProcedure.returnType),
+  __procedureSchema("get_space_flowchart", GetSpaceFlowchartProcedure.params, GetSpaceFlowchartProcedure.returnType),
   __procedureSchema("request_document_download", RequestDocumentDownloadProcedure.params, RequestDocumentDownloadProcedure.returnType),
   __procedureSchema("request_document_upload", RequestDocumentUploadProcedure.params, RequestDocumentUploadProcedure.returnType),
   __procedureSchema("retry_document_upload", RetryDocumentUploadProcedure.params, RetryDocumentUploadProcedure.returnType),

@@ -1,0 +1,15 @@
+.space-flowchart { background: #f0f3f5; }
+.flow-component { position: relative; width: 270px; height: 210px; padding: 18px 18px 12px; border: 1px solid #e7eaed; border-radius: 4px; background: #fff; box-shadow: 0 2px 7px #2634450a; color: #30343b; }
+.flow-component.is-selected { outline: 2px solid #83a5cb; outline-offset: 2px; }
+.flow-component h3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13px; line-height: 19px; font-weight: 600; }
+.flow-component-category { display: flex; align-items: center; gap: 5px; margin-top: 8px; padding-bottom: 9px; border-bottom: 1px solid #f0f1f3; color: #92969d; font-size: 10px; text-transform: capitalize; }
+.flow-component-description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 9px; font-size: 11px; line-height: 17px; color: #70757d; }
+.flow-component-sources { position: absolute; bottom: 18px; left: 18px; right: 18px; display: flex; gap: 4px; overflow-x: auto; }
+.flow-component-sources button { display: flex; align-items: center; gap: 4px; flex-shrink: 0; max-width: 180px; border-radius: 3px; background: #f4f6f8; padding: 3px 5px; color: #818894; font-size: 9px; cursor: pointer; }
+.flow-component-sources span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.flow-component-sources button:hover { background: #e8edf3; color: #384f6b; }
+.flow-component-sources button:focus-visible { outline: 2px solid #83a5cb; outline-offset: -2px; }
+.flow-component-accent { position: absolute; bottom: 0; left: 18px; width: 42px; height: 3px; border-radius: 3px 3px 0 0; }
+.space-flowchart .react-flow__handle { width: 5px; height: 5px; border: 1px solid #fff; background: #b6bdc5; }
+.space-flowchart .react-flow__controls { overflow: hidden; border: 1px solid #e1e5e9; border-radius: 6px; box-shadow: 0 2px 6px #2634450a; }
+.space-flowchart .react-flow__controls-button { background: #fff; border-color: #edf0f3; color: #646b73; }

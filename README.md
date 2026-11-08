@@ -4,7 +4,7 @@ React + TypeScript frontend and a standalone SpacetimeDB backend.
 
 ## Development
 
-Install Node.js 22+, pnpm, and the SpacetimeDB CLI. On Windows, add `%LOCALAPPDATA%\SpacetimeDB` to PATH if `spacetime` is not found.
+Install Node.js 24+, pnpm, and the SpacetimeDB CLI. On Windows, add `%LOCALAPPDATA%\SpacetimeDB` to PATH if `spacetime` is not found.
 
 ```powershell
 pnpm install
@@ -45,6 +45,9 @@ These are generated TypeScript method names; CLI/HTTP reducer names are `signup`
 SpacetimeDB's token identifies the caller/connection, while the sessions table determines which account that caller logged into. Keep that token in the client between requests; a fresh identity must log in. Sessions persist until logout or account deletion and have no automatic expiry in this demo.
 
 ## Checks
+
+For multimodal Deep Agents document flowcharts, the SpacetimeDB graph models,
+configuration, and startup commands, see [spacetimedb/FLOWCHARTS.md](spacetimedb/FLOWCHARTS.md).
 
 For owner-scoped spaces, private PDF uploads, AWS bucket/IAM setup, and run
 commands, see [spacetimedb/STORAGE.md](spacetimedb/STORAGE.md).

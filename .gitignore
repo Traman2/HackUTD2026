@@ -31,3 +31,4 @@ spacetime.*.local.json
 .spacetime-data/
 module_bindings
 synthetic-docs
+spacetimedb/data/

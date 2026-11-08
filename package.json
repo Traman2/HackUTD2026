@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "dev:web": "pnpm --dir apps/web dev",
+    "dev:agent": "pnpm --dir spacetimedb dev:agent",
     "dev:spacetime": "spacetime dev",
     "start:spacetime": "spacetime start --listen-addr 127.0.0.1:3000 --data-dir .spacetime-data --non-interactive",
     "publish:spacetime": "pnpm --dir spacetimedb run publish",

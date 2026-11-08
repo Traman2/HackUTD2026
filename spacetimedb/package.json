@@ -4,7 +4,7 @@
   "type": "module",
   "description": "",
   "scripts": {
-    "dev:agent": "node --env-file-if-exists=.env src/agents/server.ts",
+    "dev:agent": "node --watch --watch-path=.env --watch-path=src src/agents/start.ts",
     "build": "spacetime build",
     "publish": "node --env-file-if-exists=.env -e \"const p=require('node:path').join(process.env.LOCALAPPDATA||'','SpacetimeDB','spacetime.exe');const r=require('node:child_process').spawnSync(require('node:fs').existsSync(p)?p:'spacetime',['publish',process.env.SPACETIMEDB_DB_NAME||'hackutd2026','--server',process.env.SPACETIMEDB_SERVER||'local','--module-path','.'],{stdio:'inherit',env:process.env});if(r.error)throw r.error;process.exitCode=r.status??1\"",
     "publish:storage": "pnpm run publish"

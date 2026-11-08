@@ -5,9 +5,10 @@ import { useSpacetimeDB } from "spacetimedb/react";
 import { Button } from "@/components/ui/button";
 import type { DbConnection } from "@/module_bindings";
 
-export function DocumentPreviewDialog({ document, onClose }: {
+export function DocumentPreviewDialog({ document, onClose, initialPage = 1 }: {
   document: { id: bigint; filename: string; sizeBytes: number };
   onClose: () => void;
+  initialPage?: number;
 }) {
   const { getConnection, isActive } = useSpacetimeDB();
   const [previewUrl, setPreviewUrl] = useState("");
@@ -76,7 +77,7 @@ export function DocumentPreviewDialog({ document, onClose }: {
                 <Button type="button" variant="outline" onClick={() => setAttempt(value => value + 1)} className="text-xs"><RefreshCw aria-hidden="true" />Try again</Button>
               </div>
             ) : previewUrl ? (
-              <object data={`${previewUrl}#view=FitH`} type="application/pdf" aria-label={`PDF preview: ${document.filename}`} className="h-full w-full">
+              <object data={`${previewUrl}#page=${Math.max(1, Math.floor(initialPage))}&view=FitH`} type="application/pdf" aria-label={`PDF preview: ${document.filename}`} className="h-full w-full">
                 <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-xs text-[#78766e]">
                   <p>This browser cannot display an embedded PDF.</p>
                   <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-[#007bff] underline underline-offset-4">Open PDF in a new tab</a>

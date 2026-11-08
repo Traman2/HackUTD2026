@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState, type PointerEvent } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { ArrowLeft, FileText, FolderOpen, GripVertical, LoaderCircle, MessageSquare, Plus, Workflow, X } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { Button } from "@/components/ui/button";
 import { DocumentPreviewDialog } from "@/components/document-preview-dialog";
 import { tables } from "@/module_bindings";
+import { useSpaceFlowchart } from "@/hooks/use-space-flowchart";
+
+const SpaceFlowchart = lazy(() => import("@/components/space-flowchart").then(module => ({ default: module.SpaceFlowchart })));
 
 const tools = [
   { label: "Generate flowchart", icon: Workflow },
@@ -24,6 +27,8 @@ export default function SpaceDetails() {
   const space = ready ? spaces.find(row => row.id === id) : undefined;
   const [filesOpen, setFilesOpen] = useState(false);
   const [previewId, setPreviewId] = useState<bigint | null>(null);
+  const [previewPage, setPreviewPage] = useState(1);
+  const openGraphSource = useCallback((documentId: bigint, page: number) => { setPreviewPage(page); setPreviewId(documentId); }, []);
   const filesButton = useRef<HTMLButtonElement>(null);
   const workspace = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; width: number; pointerId: number } | null>(null);
@@ -53,7 +58,7 @@ export default function SpaceDetails() {
   }
   const [documents, documentsReady] = useTable(
     tables.myDocuments.where(row => row.spaceId.eq(id ?? 0n)),
-    { enabled: !!space && (filesOpen || previewId !== null) },
+    { enabled: !!space },
   );
   const sortedDocuments = [...documents].sort((a, b) => {
     const aTime = a.createdAt.microsSinceUnixEpoch;
@@ -61,6 +66,9 @@ export default function SpaceDetails() {
     return aTime === bTime ? a.filename.localeCompare(b.filename) : aTime > bTime ? -1 : 1;
   });
   const previewDocument = space && documentsReady ? documents.find(document => document.id === previewId) : undefined;
+
+  const corpusRevision = documentsReady ? documents.map(document => `${document.id}:${document.checksumSha256}:${document.verifiedAt?.microsSinceUnixEpoch ?? ""}`).sort().join("|") : "";
+  const flowchart = useSpaceFlowchart(space?.id, corpusRevision);
 
   function closeFiles() {
     drag.current = null;
@@ -88,8 +96,8 @@ export default function SpaceDetails() {
       <div className="flex min-h-0 flex-1">
         <aside aria-label="Space actions" className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-[#e3e3e7] bg-white py-2">
           {tools.map(({ label, icon: Icon }) => (
-            <Button key={label} type="button" variant="ghost" size="icon-lg" disabled={!space} aria-label={label} title={label} className="size-8 rounded-md text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:ring-[#b9d8f3]">
-              <Icon aria-hidden="true" className="size-4" />
+            <Button key={label} type="button" variant="ghost" size="icon-lg" disabled={!space || (label === "Generate flowchart" && (flowchart.busy || space.archived))} onClick={label === "Generate flowchart" ? flowchart.generate : undefined} aria-busy={label === "Generate flowchart" ? flowchart.busy : undefined} aria-label={label} title={label} className="size-8 rounded-md text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:ring-[#b9d8f3]">
+              {label === "Generate flowchart" && flowchart.busy ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" /> : <Icon aria-hidden="true" className="size-4" />}
             </Button>
           ))}
           <Button ref={filesButton} type="button" variant="ghost" size="icon-lg" disabled={!space} aria-label="View files" title="View files" aria-expanded={filesOpen && !!space} aria-controls="space-files-panel" onClick={() => { if (filesOpen) closeFiles(); else setFilesOpen(true); }} className={`size-8 rounded-md focus-visible:ring-[#b9d8f3] ${filesOpen && space ? "bg-[#f3f2ee] text-[#37352f]" : "text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f]"}`}>
@@ -133,7 +141,7 @@ export default function SpaceDetails() {
                 <ul aria-label="Space documents" className="space-y-2">
                   {sortedDocuments.map(document => (
                     <li key={document.id.toString()}>
-                      <button type="button" disabled={!document.verifiedAt} onClick={() => setPreviewId(document.id)} aria-haspopup="dialog" title={document.verifiedAt ? `Preview ${document.filename}` : "Preview is available after upload verification"} className="flex w-full cursor-pointer items-start gap-3 rounded-lg border border-[#e3e3e7] bg-white p-3 text-left transition-colors hover:border-[#b7b5ae] hover:bg-[#faf9f6] focus-visible:outline-2 focus-visible:outline-[#b9d8f3] disabled:cursor-default disabled:opacity-60">
+                      <button type="button" disabled={!document.verifiedAt} onClick={() => { setPreviewPage(1); setPreviewId(document.id); }} aria-haspopup="dialog" title={document.verifiedAt ? `Preview ${document.filename}` : "Preview is available after upload verification"} className="flex w-full cursor-pointer items-start gap-3 rounded-lg border border-[#e3e3e7] bg-white p-3 text-left transition-colors hover:border-[#b7b5ae] hover:bg-[#faf9f6] focus-visible:outline-2 focus-visible:outline-[#b9d8f3] disabled:cursor-default disabled:opacity-60">
                         <FileText aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-[#939188]" />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-xs font-medium" title={document.filename}>{document.filename}</span>
@@ -147,7 +155,7 @@ export default function SpaceDetails() {
               )}
             </div>
           </aside>
-        <main aria-label="Space workspace" className="login-grid-bg min-w-0 flex-1 overflow-auto">
+        <main aria-label="Space workspace" className="login-grid-bg flex min-w-0 flex-1 flex-col overflow-hidden">
           {!ready ? (
             <div role="status" className="flex h-full min-h-48 items-center justify-center gap-2 px-6 text-sm text-[#78766e]">
               {!connectionError && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
@@ -159,11 +167,39 @@ export default function SpaceDetails() {
               <p className="mt-2 text-xs leading-5 text-[#78766e]">This space is unavailable or does not belong to your account.</p>
               <Link to="/spaces" className="mt-5 rounded text-xs font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">Return to your spaces</Link>
             </div>
-          ) : null}
+          ) : (
+            <>
+              {(flowchart.busy || flowchart.error || flowchart.result?.error || flowchart.result?.stale) && <div className="z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#e3e3e7] bg-white px-4 py-2 text-xs text-[#78766e]">
+                <p role={flowchart.error || flowchart.result?.error ? "alert" : "status"} className="flex items-center gap-2">
+                  {flowchart.busy && <LoaderCircle aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" />}
+                  {flowchart.error || flowchart.result?.error || (flowchart.busy ? flowchart.result?.stage || "Loading flowchart..." : "Documents have changed. Generate the flowchart again to update it.")}
+                </p>
+                {!flowchart.busy && <Button variant="ghost" size="xs" onClick={flowchart.error ? flowchart.retry : flowchart.generate} disabled={space.archived}>{flowchart.error ? "Retry" : "Generate again"}</Button>}
+              </div>}
+              <div className="min-h-0 flex-1">
+                {flowchart.result?.graph && flowchart.result.graph.nodes.length > 0 ? (
+                  <Suspense fallback={<p role="status" className="p-4 text-xs text-[#78766e]">Loading flowchart...</p>}><SpaceFlowchart key={`${flowchart.result.generatedAt}:${flowchart.result.status}`} graph={flowchart.result.graph} documents={flowchart.result.documents} onPreview={openGraphSource} status={flowchart.result.status} /></Suspense>
+                ) : (
+                  <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 px-6 text-center">
+                    {flowchart.busy || flowchart.loading ? <>
+                      <LoaderCircle aria-hidden="true" className="size-6 animate-spin text-[#78766e] motion-reduce:animate-none" />
+                      <p role="status" className="text-sm font-medium">{flowchart.busy ? "Generating flowchart..." : "Loading saved flowchart..."}</p>
+                      {flowchart.busy && <p className="max-w-sm text-xs leading-5 text-[#78766e]">{flowchart.result?.stage || "Starting document analysis. The chart will appear here when it is ready."}</p>}
+                    </> : <>
+                      <Workflow aria-hidden="true" className="mb-1 size-7 text-[#939188]" />
+                      <h2 className="text-sm font-semibold">{flowchart.result?.status === "ready" ? "No supported components identified" : flowchart.phase === "error" ? "Flowchart unavailable" : "No flowchart generated yet"}</h2>
+                      <p className="max-w-sm text-xs leading-5 text-[#78766e]">{documentsReady && documents.length === 0 ? "Add PDF documents to this space before generating a flowchart." : "Generate a flowchart from this space's documents. It will appear here when ready."}</p>
+                      <Button onClick={flowchart.generate} disabled={space.archived || !documentsReady || documents.length === 0} className="mt-1 text-xs"><Workflow aria-hidden="true" />{flowchart.phase === "error" ? "Generate again" : "Generate flowchart"}</Button>
+                    </>}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </main>
         </div>
       </div>
-      {previewDocument && <DocumentPreviewDialog key={`${id}:${previewDocument.id}`} document={previewDocument} onClose={() => setPreviewId(null)} />}
+      {previewDocument && <DocumentPreviewDialog key={`${id}:${previewDocument.id}:${previewPage}`} document={previewDocument} initialPage={previewPage} onClose={() => setPreviewId(null)} />}
     </div>
   );
 }
