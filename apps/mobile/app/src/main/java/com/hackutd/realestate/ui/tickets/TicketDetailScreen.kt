@@ -307,7 +307,7 @@ private fun StepRow(
  * then the number of photos attached (green).
  */
 @Composable
-private fun PhotoBadge(photoCount: Int, modifier: Modifier = Modifier) {
+internal fun PhotoBadge(photoCount: Int, modifier: Modifier = Modifier) {
     val attached = photoCount > 0
     val container = if (attached) TicketColors.Done.copy(alpha = 0.15f) else MaterialTheme.colorScheme.tertiaryContainer
     val content = if (attached) TicketColors.Done else MaterialTheme.colorScheme.onTertiaryContainer

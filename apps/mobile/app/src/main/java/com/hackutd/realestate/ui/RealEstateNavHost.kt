@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -32,19 +33,24 @@ import com.hackutd.realestate.ui.tickets.TicketsViewModel
 import android.net.Uri
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import com.hackutd.realestate.MainActivity
+import com.hackutd.realestate.ui.resolution.ResolutionModeScreen
 
 object Routes {
     const val LOGIN = "login"
     const val SPACES = "spaces"
     const val TICKETS = "tickets/{spaceId}?spaceName={spaceName}"
     const val TICKET = "ticket/{ticketId}"
+    const val RESOLUTION = "resolution/{ticketId}"
 
     fun tickets(spaceId: Long, spaceName: String) = "tickets/$spaceId?spaceName=${Uri.encode(spaceName)}"
     fun ticket(ticketId: Long) = "ticket/$ticketId"
+    fun resolution(ticketId: Long) = "resolution/$ticketId"
 }
 
 @Composable
 fun RealEstateNavHost(
+    glassesActivity: MainActivity,
     appViewModel: AppViewModel = viewModel(factory = repositoryFactory(::AppViewModel)),
 ) {
     val start by appViewModel.start.collectAsStateWithLifecycle()
@@ -53,14 +59,14 @@ fun RealEstateNavHost(
         when (val s = start) {
             StartState.Checking -> Centered { CircularProgressIndicator() }
             is StartState.Failed -> StartError(s.message, onRetry = appViewModel::check)
-            StartState.SignedOut -> AppNavigation(appViewModel, Routes.LOGIN)
-            is StartState.SignedIn -> AppNavigation(appViewModel, Routes.SPACES)
+            StartState.SignedOut -> AppNavigation(appViewModel, Routes.LOGIN, glassesActivity)
+            is StartState.SignedIn -> AppNavigation(appViewModel, Routes.SPACES, glassesActivity)
         }
     }
 }
 
 @Composable
-private fun AppNavigation(appViewModel: AppViewModel, startRoute: String) {
+private fun AppNavigation(appViewModel: AppViewModel, startRoute: String, glassesActivity: MainActivity) {
     val navController = rememberNavController()
     val profile by appViewModel.profile.collectAsStateWithLifecycle()
 
@@ -100,8 +106,23 @@ private fun AppNavigation(appViewModel: AppViewModel, startRoute: String) {
         ) {
             TicketDetailScreen(
                 onBack = { navController.popBackStack() },
-                // Resolution Mode (guides 06–07) plugs in here.
-                onStartResolution = null,
+                onStartResolution = { ticket -> navController.navigate(Routes.resolution(ticket.id)) },
+            )
+        }
+        composable(
+            Routes.RESOLUTION,
+            arguments = listOf(navArgument(TicketDetailViewModel.ARG_TICKET_ID) { type = NavType.LongType }),
+        ) { entry ->
+            val ticketId = checkNotNull(entry.arguments?.getLong(TicketDetailViewModel.ARG_TICKET_ID))
+            val ticketEntry = remember(entry) { navController.getBackStackEntry(Routes.ticket(ticketId)) }
+            val ticketViewModel: TicketDetailViewModel = viewModel(
+                viewModelStoreOwner = ticketEntry,
+                factory = appFactory { app, saved -> TicketDetailViewModel(app.repository, saved) },
+            )
+            ResolutionModeScreen(
+                activity = glassesActivity,
+                ticketViewModel = ticketViewModel,
+                onBack = { navController.popBackStack() },
             )
         }
     }

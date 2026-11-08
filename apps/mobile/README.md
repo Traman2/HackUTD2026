@@ -4,7 +4,7 @@ Native Kotlin (Jetpack Compose) app that connects to Ray-Ban Meta glasses (Wayfa
 through the [Meta Wearables Device Access Toolkit](https://wearables.developer.meta.com/docs/getting-started-toolkit).
 
 - **minSdk 29** (Android 10, required by the toolkit) · **target/compile SDK 36** (Android 16)
-- Toolkit modules: `mwdat-core`, `mwdat-camera`, `mwdat-mockdevice` (simulated glasses).
+- Toolkit modules: `mwdat-core`, `mwdat-camera`.
   `mwdat-display` is left out because it only targets Meta Ray-Ban Display glasses.
 
 ## Run on your phone

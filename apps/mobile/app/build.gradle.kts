@@ -54,6 +54,7 @@ android {
 }
 
 dependencies {
+    testImplementation(libs.junit)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -74,6 +75,4 @@ dependencies {
     // Meta glasses SDK
     implementation(libs.mwdat.core)
     implementation(libs.mwdat.camera)
-    // Simulated glasses for testing without hardware.
-    implementation(libs.mwdat.mockdevice)
 }

@@ -40,11 +40,15 @@ plus the guide for that step. Ask for one guide at a time and build/run after ea
 - Native Kotlin + Jetpack Compose, package `com.hackutd.realestate`.
 - minSdk 29 (Android 10, required by Meta's SDK), target/compile SDK 36 (Android 16, Galaxy S24 Ultra).
 - AGP 9.2.1 (newest supported by the installed Android Studio), Kotlin 2.4.21, Gradle 9.5.1.
-- Meta Wearables Device Access Toolkit 1.0.1 already added: `mwdat-core`, `mwdat-camera`,
-  `mwdat-mockdevice`. (`mwdat-display` is intentionally omitted: Wayfarer Gen 2 has no display.)
-- Manifest already has Bluetooth/Internet/Camera permissions, the Meta app ID / client token
+- Meta Wearables Device Access Toolkit 1.0.1 already added: `mwdat-core`, `mwdat-camera`.
+  (`mwdat-display` is intentionally omitted: Wayfarer Gen 2 has no display.)
+- Manifest already has Bluetooth/Internet permissions, the Meta app ID / client token
   placeholders (`"0"` in Developer Mode), and the `realestate://` callback scheme.
-- `MainActivity` shows a Hello World screen.
+- Login, spaces, tickets, step updates, and glasses photo badges are implemented.
+- Glasses registration, permissions, session/reconnect UI, live video, and the compact checklist
+  overlay are implemented. Build/lint and HEVC parser tests pass; live hardware verification remains.
+- Resolution Mode streams from real glasses only. The S3 photo upload path is retained for future
+  glasses photos; capture/upload controls and the AI agent are not implemented in this phase.
 
 ## Suggested source layout (final)
 
@@ -59,7 +63,9 @@ app/src/main/java/com/hackutd/realestate/
     Repository.kt              // login/logout, spaces, tickets, step updates
   glasses/
     GlassesManager.kt          // Wearables init, registration, permission, session, stream
-    HevcDecoder.kt             // copied from Meta's CameraAccess sample
+    GlassesCamera.kt           // camera lifecycle, frames, surface and decoder ownership
+    HevcDecoder.kt             // asynchronous MediaCodec decode to Surface
+    HevcAnnexB.kt              // NAL parsing and cached HEVC parameter sets
   ui/
     login/LoginScreen.kt + LoginViewModel.kt
     spaces/SpacesScreen.kt + SpacesViewModel.kt

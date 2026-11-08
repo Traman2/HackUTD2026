@@ -1,5 +1,31 @@
 # 07 — Agent Resolution Mode: Live Camera + To-Do Overlay
 
+## Current implementation
+
+Resolution Mode now starts the real glasses camera after registration and camera permission.
+`GlassesCamera` requests compressed HEVC at MEDIUM quality / 24 fps; `HevcDecoder` renders to a
+Compose-managed Surface. Video fills the screen without stretching. Codec parameters are cached
+across surface recreation, and decoding waits for a keyframe before showing LIVE.
+
+The bottom half contains a compact, scrollable checklist: title, progress, safety notes, step
+instructions, checkboxes, and the current step's expected result. Photo requirement/count badges
+are retained. Tap safety notes to read their full text. Checkboxes save through the same
+`TicketDetailViewModel` as the detail screen, so changes remain synchronized. Failed/skipped
+steps display an indeterminate checkbox and their status. The existing detail sheet remains the
+place to add notes or select Failed/Skipped.
+
+The checklist remains usable while the glasses are disconnected or paused. Reconnect creates
+a fresh session. Exiting/backgrounding stops the camera, decoder, and session; returning from
+the background reconnects a session that was active. The glasses button opens connection
+settings. There are no simulated-device controls, phone-camera fallback, AI calls, recording,
+or photo capture/upload controls in this implementation.
+
+Verification: eight HEVC parser/configuration tests pass; debug build and lint pass with no
+errors. Live video, reconnect, and lifecycle behavior still require a test with worn glasses.
+
+The sections below describe the original guide; the implementation above reflects the current
+scope (compact checkboxes, with the agent to follow).
+
 Goal: after tapping **Start Agent Resolution Mode** on a ticket, show the live video from the
 glasses full screen, with the ticket's steps as a to-do card covering the bottom half of the video.
 

@@ -37,10 +37,9 @@ curl -s -X POST $H/sql -H "Authorization: Bearer $T" --data 'SELECT id, title, s
 | 13 | Stop ngrok, pull to refresh | "Can't reach the server" message, no crash |
 | 14 | Sign out | Back to Login; reopening the app shows Login |
 
-## Without glasses
+## Hardware requirement
 
-Use the Mock Device Kit (guide 06) with a short portrait MP4 as the camera feed; tests 9–11 should
-behave the same.
+Tests 9-12 require paired, worn Ray-Ban Meta glasses.
 
 ## Common problems
 

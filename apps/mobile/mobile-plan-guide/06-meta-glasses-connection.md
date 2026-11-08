@@ -152,22 +152,9 @@ class GlassesManager(private val app: Application, private val scope: CoroutineS
 Keep it as a single app-wide instance (create it in an `Application` subclass or a simple
 singleton) so the session survives screen rotation.
 
-## Testing without glasses
+## Hardware testing
 
-`mwdat-mockdevice` is already a dependency. In a debug-only screen or menu:
-
-```kotlin
-import com.meta.wearable.dat.mockdevice.MockDeviceKit
-import com.meta.wearable.dat.mockdevice.api.GlassesModel
-
-val kit = MockDeviceKit.getInstance(context)
-kit.enable()
-val device = kit.pairGlasses(GlassesModel.RAYBAN_META).getOrThrow()
-device.powerOn(); device.don(); device.unfold()
-device.services.camera.setCameraFeed(videoFileUri)   // or the phone camera (needs CAMERA permission)
-```
-
-Then the normal session/stream code runs against the simulated glasses.
+Use paired Ray-Ban Meta glasses for registration, permissions, sessions, and streaming.
 
 ## Done when
 
@@ -175,3 +162,19 @@ Then the normal session/stream code runs against the simulated glasses.
   registration = `REGISTERED`.
 - The Meta AI camera permission prompt appears once, and the session reaches `STARTED`.
 - Folding the glasses shows "Glasses disconnected" with a Reconnect button that works.
+
+## Implementation status
+
+Guide 06 is implemented. From an active ticket, tap **Start Agent Resolution Mode** to open
+Resolution Mode. Nearby devices access is requested here, so login and ticket
+updates do not require Bluetooth permission. If Android permanently denies access, the button
+opens the app's Android settings.
+
+The app-wide `GlassesManager` initializes the SDK once, observes registration and linked devices,
+checks glasses camera permission, and opens a device session. Registration returns from Meta AI
+and continues the connection flow. A paused session waits; a stopped session requires
+**Reconnect**, which creates a new session. Connecting times out after 30 seconds with a retry
+message. Leaving the screen or backgrounding the app stops the session; rotation preserves it.
+
+Verified with `:app:assembleDebug :app:lintDebug` (zero lint errors). Registration, permission
+prompts, rotation, and fold/reconnect still need hardware verification. Guide 07 now supplies the camera preview and compact checklist overlay on the same destination.
