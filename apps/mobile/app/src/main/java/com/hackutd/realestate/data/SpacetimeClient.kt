@@ -49,6 +49,20 @@ class SpacetimeClient(
     suspend fun callProcedure(token: String, name: String, args: JSONArray): String =
         call(token, name, args)
 
+    /** Downloads bytes from a signed S3 GET URL (e.g. a ticket photo from get_ticket). */
+    suspend fun downloadSigned(url: String): ByteArray = withContext(Dispatchers.IO) {
+        try {
+            s3Http.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw SpacetimeException("Couldn't load the photo (HTTP ${response.code}).", response.code)
+                }
+                response.body.bytes()
+            }
+        } catch (e: IOException) {
+            throw SpacetimeException("Couldn't load the photo. Check your connection.", 0)
+        }
+    }
+
     /**
      * Uploads bytes to a signed S3 PUT URL from request_ticket_photo_upload. The headers must
      * match what was signed, so this uses a plain client without the ngrok header.

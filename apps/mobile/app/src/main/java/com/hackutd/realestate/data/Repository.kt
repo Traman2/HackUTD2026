@@ -107,17 +107,32 @@ class Repository(
     /** One ticket, or null if it no longer exists. */
     suspend fun ticket(ticketId: Long): Ticket? = queryTickets("WHERE id = $ticketId").firstOrNull()
 
-    /** Photos attached to a ticket (metadata only; the images are in S3). */
+    /**
+     * Photos attached to a ticket, oldest first. get_ticket returns each verified photo with a
+     * short-lived signed S3 URL, so the images can be downloaded with [photoBytes].
+     */
     suspend fun ticketPhotos(ticketId: Long): List<TicketPhoto> {
-        val rows = client.sql(
-            ensureToken(),
-            "SELECT id, step_order, status FROM my_ticket_photos WHERE ticket_id = $ticketId",
-        )
-        return (0 until rows.length()).map { i ->
-            val row = rows.getJSONArray(i)
-            TicketPhoto(id = row.getLong(0), stepOrder = row.getInt(1), status = row.getString(2))
+        val body = client.callProcedure(ensureToken(), "get_ticket", JSONArray().put(ticketId))
+        // The procedure returns a JSON string, which the HTTP API encodes again.
+        val decoded = JSONTokener(body).nextValue()
+        val detail = if (decoded is String) JSONObject(decoded) else decoded as JSONObject
+        val photos = detail.optJSONArray("photos") ?: return emptyList()
+        return (0 until photos.length()).map { i ->
+            val photo = photos.getJSONObject(i)
+            TicketPhoto(
+                id = photo.getString("id").toLong(),
+                stepOrder = photo.getInt("stepOrder"),
+                status = photo.getString("status"),
+                caption = photo.optString("caption"),
+                source = photo.optString("source"),
+                createdAt = photo.optString("createdAt"),
+                url = if (photo.isNull("url")) null else photo.getString("url"),
+            )
         }
     }
+
+    /** Downloads a photo's bytes from its signed S3 URL. */
+    suspend fun photoBytes(url: String): ByteArray = client.downloadSigned(url)
 
     /** Marks a step done / failed / skipped, or "pending" to clear it. Note: up to 500 chars. */
     suspend fun updateStep(ticketId: Long, stepOrder: Int, status: String, note: String) {

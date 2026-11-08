@@ -52,13 +52,20 @@ data class TicketStep(
     val completedAtMicros: Long?,
 )
 
-/** A photo attached to a ticket (bytes live in S3), from the my_ticket_photos view. */
+/** A photo attached to a ticket (bytes live in S3), from the get_ticket procedure. */
 data class TicketPhoto(
     val id: Long,
     /** 0 = the ticket itself, 1..n = a step. */
     val stepOrder: Int,
     /** requested | verified | failed */
     val status: String,
+    val caption: String = "",
+    /** glasses | phone */
+    val source: String = "",
+    /** ISO-8601 time the photo was taken. */
+    val createdAt: String = "",
+    /** Short-lived (5 min) signed S3 GET URL; null until the upload is verified. */
+    val url: String? = null,
 )
 
 /** A photo ready to upload: JPEG bytes plus the base64 SHA-256 S3 checks them against. */

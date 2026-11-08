@@ -5,6 +5,8 @@ import type { GraphResult } from "../../../../spacetimedb/src/validation/flowcha
 import type { Ticket } from "../../../../spacetimedb/src/validation/tickets";
 import type { SpaceTickets } from "@/hooks/use-space-tickets";
 import { severityStyles } from "./risk-styles";
+import { PhotoGrid, PhotoLightbox, PhotoStrip, type TicketPhotoRow } from "./ticket-photos";
+import { useTicketPhotos } from "@/hooks/use-ticket-photos";
 
 const statusStyles: Record<Ticket["status"], { label: string; className: string }> = {
   open: { label: "Open", className: "border-ds-blue-300 bg-ds-blue-100 text-ds-blue-900" },
@@ -39,6 +41,10 @@ export function SpaceTicketsView({ tickets: job, hasFlowchart, flowchartBusy, ar
   const filenames = new Map(documents.map(doc => [doc.id, doc.filename]));
   const visible = filter === "active" ? tickets.filter(isActive) : tickets;
   const selected = visible.find(ticket => ticket.id === selectedId) ?? visible[0] ?? null;
+  const photos = useTicketPhotos(selected?.id ?? null);
+  const [viewingPhoto, setViewingPhoto] = useState<TicketPhotoRow | null>(null);
+  const photosFor = (stepOrder: number) => photos.filter(photo => photo.stepOrder === stepOrder);
+  const ticketPhotos = photosFor(0);
   const counts = { active: tickets.filter(isActive).length, resolved: tickets.filter(ticket => ticket.status === "resolved" || ticket.status === "closed").length };
   const disabledReason = !hasFlowchart ? "Generate the flowchart first; tickets are created from its problems."
     : flowchartBusy ? "Wait for the flowchart to finish." : archived ? "This space is archived." : "";
@@ -116,13 +122,21 @@ export function SpaceTicketsView({ tickets: job, hasFlowchart, flowchartBusy, ar
                   <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5"><StepStatusIcon status={step.status} /><span className="text-[10px] text-subtle">{step.order}</span></div>
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground">{stepKindLabels[step.kind]}
-                      {step.requiresPhoto && <span className="inline-flex items-center gap-1 rounded-full bg-ds-blue-100 px-2 py-px font-sans font-medium normal-case tracking-normal text-ds-blue-900"><Camera aria-hidden="true" className="size-3" />Photo from glasses</span>}</p>
+                      {(step.requiresPhoto || photosFor(step.order).length > 0) && (photosFor(step.order).length > 0
+                        ? <span className="inline-flex items-center gap-1 rounded-full bg-ds-green-100 px-2 py-px font-sans font-medium normal-case tracking-normal text-ds-green-900"><Camera aria-hidden="true" className="size-3" />{photosFor(step.order).length === 1 ? "1 photo" : `${photosFor(step.order).length} photos`}</span>
+                        : <span className="inline-flex items-center gap-1 rounded-full bg-ds-blue-100 px-2 py-px font-sans font-medium normal-case tracking-normal text-ds-blue-900"><Camera aria-hidden="true" className="size-3" />Photo from glasses</span>)}</p>
                     <p className="mt-0.5 text-sm leading-5 text-foreground">{step.instruction}</p>
                     {step.expectedResult && <p className="mt-1 text-xs leading-[18px] text-muted-foreground"><span className="font-medium">Expected: </span>{step.expectedResult}</p>}
                     {step.result && <p className="mt-1.5 rounded bg-muted px-2 py-1 text-xs text-foreground"><span className="font-medium">Result: </span>{step.result}{step.completedAt ? ` · ${formatTime(step.completedAt)}` : ""}</p>}
+                    {photosFor(step.order).length > 0 && <PhotoStrip photos={photosFor(step.order)} onOpen={setViewingPhoto} />}
                   </div>
                 </li>)}
               </ol>
+
+              {ticketPhotos.length > 0 && <>
+                <h4 className="mt-6 font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">Photos<span className="ml-1.5 text-subtle">{ticketPhotos.length}</span></h4>
+                <PhotoGrid photos={ticketPhotos} onOpen={setViewingPhoto} />
+              </>}
 
               {selected.sources.length > 0 && <>
                 <h4 className="mt-6 font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">Evidence</h4>
@@ -136,6 +150,7 @@ export function SpaceTicketsView({ tickets: job, hasFlowchart, flowchartBusy, ar
               <p className="mt-6 border-t border-border pt-3 text-[11px] leading-4 text-subtle">
                 Created {formatTime(selected.createdAt)} by the ticket agent{selected.draftedBy === "rules" ? " (rule-based steps; the model was unavailable)" : ""}. Steps are completed from the mobile app and Meta glasses; nothing here operates equipment.
               </p>
+              {viewingPhoto && <PhotoLightbox photo={viewingPhoto} title={viewingPhoto.stepOrder === 0 ? "Ticket photo" : `Step ${viewingPhoto.stepOrder} · ${selected.steps.find(step => step.order === viewingPhoto.stepOrder)?.instruction ?? ""}`} onClose={() => setViewingPhoto(null)} />}
             </article> : <p className="px-6 py-12 text-center text-xs text-subtle">Select a ticket to see its steps.</p>}
           </section>
         </div>

@@ -54,6 +54,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hackutd.realestate.data.Ticket
+import com.hackutd.realestate.data.TicketPhoto
 import com.hackutd.realestate.data.TicketStep
 import com.hackutd.realestate.ui.AppButton
 import com.hackutd.realestate.ui.AppCard
@@ -90,6 +91,8 @@ fun TicketDetailScreen(
 
     // Step whose sheet is open.
     var sheetStep by rememberSaveable { mutableStateOf<Int?>(null) }
+    // Photo open in the full-screen viewer.
+    var viewingPhotoId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     LifecycleResumeEffect(viewModel) {
         viewModel.load()
@@ -139,10 +142,22 @@ fun TicketDetailScreen(
                         ticket = ticket,
                         state = state,
                         onStepClick = { sheetStep = it.order },
+                        loadPhoto = viewModel::loadPhoto,
+                        onOpenPhoto = { viewingPhotoId = it.id },
                     )
                 }
             }
         }
+    }
+
+    val viewingPhoto = state.photos.firstOrNull { it.id == viewingPhotoId }
+    if (viewingPhoto != null) {
+        PhotoViewer(
+            photo = viewingPhoto,
+            title = if (viewingPhoto.stepOrder == 0) "Ticket photo" else "Step ${viewingPhoto.stepOrder}",
+            load = viewModel::loadPhoto,
+            onDismiss = { viewingPhotoId = null },
+        )
     }
 
     val openStep = ticket?.steps?.firstOrNull { it.order == sheetStep }
@@ -165,6 +180,8 @@ private fun TicketContent(
     ticket: Ticket,
     state: TicketDetailUiState,
     onStepClick: (TicketStep) -> Unit,
+    loadPhoto: PhotoLoader,
+    onOpenPhoto: (TicketPhoto) -> Unit,
 ) {
     val currentOrder = ticket.currentStep?.order
     LazyColumn(
@@ -214,9 +231,21 @@ private fun TicketContent(
                 step = step,
                 isCurrent = ticket.isActive && step.order == currentOrder,
                 saving = state.savingStep == step.order,
-                photoCount = state.photoCount(step.order),
+                photos = state.photosFor(step.order),
+                loadPhoto = loadPhoto,
+                onOpenPhoto = onOpenPhoto,
                 onClick = { onStepClick(step) },
             )
+        }
+        // Photos taken for the ticket as a whole rather than a specific step.
+        val ticketPhotos = state.photosFor(0)
+        if (ticketPhotos.isNotEmpty()) {
+            item(key = "photos") {
+                Column(Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SectionLabel("Photos", trailing = "${ticketPhotos.size}")
+                    TicketPhotoGrid(ticketPhotos, loadPhoto, onOpenPhoto)
+                }
+            }
         }
     }
 }
@@ -247,9 +276,12 @@ private fun StepRow(
     step: TicketStep,
     isCurrent: Boolean,
     saving: Boolean,
-    photoCount: Int,
+    photos: List<TicketPhoto>,
+    loadPhoto: PhotoLoader,
+    onOpenPhoto: (TicketPhoto) -> Unit,
     onClick: () -> Unit,
 ) {
+    val photoCount = photos.size
     AppCard(
         onClick = onClick,
         highlighted = isCurrent,
@@ -287,6 +319,9 @@ private fun StepRow(
                         photoCount = photoCount,
                         modifier = Modifier.padding(top = 4.dp),
                     )
+                }
+                if (photos.isNotEmpty()) {
+                    PhotoStrip(photos, loadPhoto, onOpenPhoto, modifier = Modifier.padding(top = 6.dp))
                 }
             }
         }

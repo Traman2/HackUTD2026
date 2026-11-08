@@ -1,6 +1,8 @@
 package com.hackutd.realestate.glasses
 
+import android.graphics.ImageDecoder
 import android.view.Surface
+import java.nio.ByteBuffer
 import android.util.Base64
 import com.hackutd.realestate.data.PreparedPhoto
 import com.meta.wearable.dat.camera.types.PhotoData
@@ -65,12 +67,28 @@ class GlassesCamera(private val scope: CoroutineScope) {
                     check(photo.bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)) { "Couldn't encode the photo." }
                     output.toByteArray() to "image/jpeg"
                 }
-                is PhotoData.HEIC -> ByteArray(photo.data.remaining()).also { photo.data.duplicate().get(it) } to "image/heic"
+                is PhotoData.HEIC -> {
+                    val heic = ByteArray(photo.data.remaining()).also { photo.data.duplicate().get(it) }
+                    // Browsers can't show HEIC, so store JPEG. Keep the original if it can't be decoded.
+                    heicToJpeg(heic)?.let { it to "image/jpeg" } ?: (heic to "image/heic")
+                }
             }
             check(bytes.size in 100..15 * 1024 * 1024) { "Glasses photo size is unsupported." }
             PreparedPhoto(bytes, contentType, Base64.encodeToString(MessageDigest.getInstance("SHA-256").digest(bytes), Base64.NO_WRAP))
         }
     }
+
+    /** Decodes HEIC (applying its rotation) and re-encodes it as JPEG, or null if decoding fails. */
+    private fun heicToJpeg(heic: ByteArray): ByteArray? = runCatching {
+        val source = ImageDecoder.createSource(ByteBuffer.wrap(heic))
+        val bitmap = ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+        }
+        ByteArrayOutputStream().use { output ->
+            check(bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output))
+            output.toByteArray()
+        }.also { bitmap.recycle() }
+    }.getOrNull()
 
     fun start(session: DeviceSession) {
         if (camera != null) return
