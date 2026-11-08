@@ -220,6 +220,66 @@ export const Spaces = __t.object("Spaces", {
 });
 export type Spaces = __Infer<typeof Spaces>;
 
+export const TicketJobs = __t.object("TicketJobs", {
+  spaceId: __t.u64(),
+  ownerUsername: __t.string(),
+  status: __t.string(),
+  stage: __t.string(),
+  error: __t.option(__t.string()),
+  jobId: __t.string(),
+  leaseUntil: __t.timestamp(),
+  lastCreated: __t.u32(),
+  generatedAt: __t.option(__t.timestamp()),
+  updatedAt: __t.timestamp(),
+});
+export type TicketJobs = __Infer<typeof TicketJobs>;
+
+export const TicketSource = __t.object("TicketSource", {
+  documentId: __t.string(),
+  page: __t.u32(),
+});
+export type TicketSource = __Infer<typeof TicketSource>;
+
+export const TicketStep = __t.object("TicketStep", {
+  order: __t.u32(),
+  instruction: __t.string(),
+  kind: __t.string(),
+  expectedResult: __t.string(),
+  requiresPhoto: __t.bool(),
+  status: __t.string(),
+  result: __t.option(__t.string()),
+  completedAt: __t.option(__t.timestamp()),
+});
+export type TicketStep = __Infer<typeof TicketStep>;
+
+export const Tickets = __t.object("Tickets", {
+  id: __t.u64(),
+  spaceId: __t.u64(),
+  ownerUsername: __t.string(),
+  problemKey: __t.string(),
+  title: __t.string(),
+  kind: __t.string(),
+  priority: __t.string(),
+  status: __t.string(),
+  assetLabel: __t.string(),
+  equipmentCode: __t.string(),
+  overviewNodeId: __t.option(__t.string()),
+  networkNodeId: __t.string(),
+  summary: __t.string(),
+  safetyNotes: __t.string(),
+  get steps() {
+    return __t.array(TicketStep);
+  },
+  get sources() {
+    return __t.array(TicketSource);
+  },
+  draftedBy: __t.string(),
+  jobId: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type Tickets = __Infer<typeof Tickets>;
+
 export const Uploads = __t.object("Uploads", {
   documentId: __t.u64(),
   requestedBy: __t.string(),

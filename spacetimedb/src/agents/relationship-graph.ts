@@ -23,7 +23,7 @@ const normalize = (value: string) => value.toLowerCase().replace(/\b(llc|inc|inc
 
 // A single equipment ID in the key (or failing that, the title) identifies the
 // asset across documents even when the model decorates it ("CRAC-02 room unit").
-function assetCode(value: string): string | undefined {
+export function assetCode(value: string): string | undefined {
   const codes = new Set((value.match(ASSET_CODE) ?? []).filter(code => /\d/.test(code)).map(code => code.toUpperCase()));
   return codes.size === 1 ? [...codes][0] : undefined;
 }

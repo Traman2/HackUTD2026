@@ -9,11 +9,13 @@ import { ResizeHandle } from "@/components/resize-handle";
 import { SpaceFilesList } from "@/components/space-files-list";
 import { SpaceFlowchartView } from "@/components/space-flowchart-view";
 import { SpaceInsightsView } from "@/components/space-insights-view";
+import { SpaceTicketsView } from "@/components/space-tickets-view";
 import { SpaceSidebar, type SpaceView } from "@/components/space-sidebar";
 import { tables } from "@/module_bindings";
 import { useElementWidth, useResizableWidth } from "@/hooks/use-resizable-width";
 import { useSpaceFlowchart } from "@/hooks/use-space-flowchart";
 import { useSpaceRisk } from "@/hooks/use-space-risk";
+import { useSpaceTickets } from "@/hooks/use-space-tickets";
 
 export default function SpaceDetails() {
   const { spaceId } = useParams();
@@ -62,6 +64,8 @@ export default function SpaceDetails() {
   const filesVisible = filesOpen && !!space;
   // The risk agent runs only from the flowchart toolbar button; this just reads results.
   const risk = useSpaceRisk(space?.id, flowchart.result?.generatedAt ?? null);
+  // The ticket agent runs only from the Tickets view button; this reads saved tickets.
+  const tickets = useSpaceTickets(space?.id, flowchart.result?.generatedAt ?? null);
   const currentRisk = risk.result?.stale ? null : risk.assessment;
   const riskVisible = riskOpen && view === "flowchart" && !!space && !!graph;
 
@@ -152,6 +156,10 @@ export default function SpaceDetails() {
                 </div>
                 <div aria-hidden={view !== "insights"} inert={view !== "insights"} className={`absolute inset-0 ${view === "insights" ? "" : "invisible"}`}>
                   <SpaceInsightsView key={space.id.toString()} active={view === "insights"} />
+                </div>
+                <div aria-hidden={view !== "tickets"} inert={view !== "tickets"} className={`absolute inset-0 ${view === "tickets" ? "" : "invisible"}`}>
+                  <SpaceTicketsView key={space.id.toString()} tickets={tickets} hasFlowchart={!!graph?.nodes.length} flowchartBusy={flowchart.busy} archived={space.archived}
+                    documents={flowchart.result?.documents ?? []} onPreview={openGraphSource} onShowNode={nodeId => { changeView("flowchart"); openNode(nodeId); }} />
                 </div>
               </>
             )}

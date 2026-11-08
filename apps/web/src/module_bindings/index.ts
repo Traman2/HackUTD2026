@@ -52,8 +52,10 @@ import * as CleanupDocumentUploadProcedure from "./cleanup_document_upload_proce
 import * as ConfirmDocumentUploadProcedure from "./confirm_document_upload_procedure.ts";
 import * as CreateSpaceWithIdProcedure from "./create_space_with_id_procedure.ts";
 import * as GenerateSpaceFlowchartProcedure from "./generate_space_flowchart_procedure.ts";
+import * as GenerateSpaceTicketsProcedure from "./generate_space_tickets_procedure.ts";
 import * as GetSpaceFlowchartProcedure from "./get_space_flowchart_procedure.ts";
 import * as GetSpaceRiskProcedure from "./get_space_risk_procedure.ts";
+import * as GetSpaceTicketsProcedure from "./get_space_tickets_procedure.ts";
 import * as RequestDocumentDownloadProcedure from "./request_document_download_procedure.ts";
 import * as RequestDocumentUploadProcedure from "./request_document_upload_procedure.ts";
 import * as RetryDocumentUploadProcedure from "./retry_document_upload_procedure.ts";
@@ -112,8 +114,10 @@ const proceduresSchema = __procedures(
   __procedureSchema("confirm_document_upload", ConfirmDocumentUploadProcedure.params, ConfirmDocumentUploadProcedure.returnType),
   __procedureSchema("create_space_with_id", CreateSpaceWithIdProcedure.params, CreateSpaceWithIdProcedure.returnType),
   __procedureSchema("generate_space_flowchart", GenerateSpaceFlowchartProcedure.params, GenerateSpaceFlowchartProcedure.returnType),
+  __procedureSchema("generate_space_tickets", GenerateSpaceTicketsProcedure.params, GenerateSpaceTicketsProcedure.returnType),
   __procedureSchema("get_space_flowchart", GetSpaceFlowchartProcedure.params, GetSpaceFlowchartProcedure.returnType),
   __procedureSchema("get_space_risk", GetSpaceRiskProcedure.params, GetSpaceRiskProcedure.returnType),
+  __procedureSchema("get_space_tickets", GetSpaceTicketsProcedure.params, GetSpaceTicketsProcedure.returnType),
   __procedureSchema("request_document_download", RequestDocumentDownloadProcedure.params, RequestDocumentDownloadProcedure.returnType),
   __procedureSchema("request_document_upload", RequestDocumentUploadProcedure.params, RequestDocumentUploadProcedure.returnType),
   __procedureSchema("retry_document_upload", RetryDocumentUploadProcedure.params, RetryDocumentUploadProcedure.returnType),

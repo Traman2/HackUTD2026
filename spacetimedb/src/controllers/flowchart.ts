@@ -8,7 +8,7 @@ import { presignS3, storageConfig } from "../clients/s3";
 import { savedFlowchart, sourceFingerprint } from "./flowchart-storage";
 
 type Context = ProcedureCtx<InferSchema<typeof spacetimedb>>;
-export type AgentOperation = "get" | "generate" | "risk";
+export type AgentOperation = "get" | "generate" | "risk" | "tickets";
 // Returns an owner-authorized, short-lived signed capability for the local agent.
 export function requestAgent(ctx: Context, spaceId: bigint, operation: AgentOperation) {
   const generate = operation === "generate";

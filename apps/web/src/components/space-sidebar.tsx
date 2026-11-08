@@ -1,12 +1,13 @@
 import type { Ref } from "react";
-import { ChartLine, FolderOpen, Plus, Workflow, type LucideIcon } from "lucide-react";
+import { ChartLine, FolderOpen, Ticket, Workflow, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export type SpaceView = "flowchart" | "insights";
+export type SpaceView = "flowchart" | "insights" | "tickets";
 
 const views: { view: SpaceView; label: string; icon: LucideIcon }[] = [
   { view: "flowchart", label: "Flowchart", icon: Workflow },
   { view: "insights", label: "Chat and insights", icon: ChartLine },
+  { view: "tickets", label: "Tickets", icon: Ticket },
 ];
 
 const baseClass = "size-8 rounded-md focus-visible:ring-[#b9d8f3]";
@@ -27,9 +28,6 @@ export function SpaceSidebar({ disabled, view, onViewChange, filesOpen, onToggle
           </Button>
         );
       })}
-      <Button type="button" variant="ghost" size="icon-lg" disabled={disabled} aria-label="Add documents" title="Add documents" className={`${baseClass} ${idleClass}`}>
-        <Plus aria-hidden="true" className="size-4" />
-      </Button>
       <Button ref={filesButtonRef} type="button" variant="ghost" size="icon-lg" disabled={disabled} aria-label="View files" title="View files" aria-expanded={filesOpen && !disabled} aria-controls="space-files-panel" onClick={onToggleFiles} className={`${baseClass} ${filesOpen && !disabled ? activeClass : idleClass}`}>
         <FolderOpen aria-hidden="true" className="size-4" />
       </Button>

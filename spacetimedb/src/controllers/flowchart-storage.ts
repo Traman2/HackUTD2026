@@ -7,6 +7,7 @@ import { z } from "zod";
 import spacetimedb from "../schema";
 import { graphDetailsSchema, graphResultSchema, graphSchema, networkSchema, validateGraph, withoutDanglingEdges, type GraphDetails } from "../validation/flowchart";
 import { handleRiskOperation, RISK_OPERATIONS, type RiskOperation } from "./risk-storage";
+import { handleTicketOperation, TICKET_OPERATIONS, type TicketOperation } from "./tickets-storage";
 import { citedPages, documentFactsSchema } from "../validation/document-facts";
 
 type Tx = TransactionCtx<InferSchema<typeof spacetimedb>>;
@@ -41,7 +42,7 @@ export function savedFlowchart(tx: Tx, spaceId: bigint) {
 const serviceRequest = z.object({
   audience: z.literal("flowchart-store"), namespace: z.string(), owner: z.string(), spaceId: z.string().regex(/^[1-9]\d*$/),
   jobId: z.string().uuid(), expiresAt: z.number().int(),
-  operation: z.enum(["get", "begin", "stage", "heartbeat", "fail", "save", "checkpoint", "cacheGet", "cacheSave", "metadataGet", "metadataSave", "networkSave", ...RISK_OPERATIONS]),
+  operation: z.enum(["get", "begin", "stage", "heartbeat", "fail", "save", "checkpoint", "cacheGet", "cacheSave", "metadataGet", "metadataSave", "networkSave", ...RISK_OPERATIONS, ...TICKET_OPERATIONS]),
   data: z.record(z.string(), z.unknown()),
 });
 
@@ -65,6 +66,9 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
     if (operation === "get") return JSON.stringify(savedFlowchart(tx, spaceId));
     if ((RISK_OPERATIONS as readonly string[]).includes(operation)) {
       return handleRiskOperation(tx, { spaceId, owner: request.owner, jobId, operation: operation as RiskOperation, data });
+    }
+    if ((TICKET_OPERATIONS as readonly string[]).includes(operation)) {
+      return handleTicketOperation(tx, { spaceId, owner: request.owner, jobId, operation: operation as TicketOperation, data });
     }
     const leaseUntil = new Timestamp(tx.timestamp.microsSinceUnixEpoch + 120_000_000n);
     const row = tx.db.flowcharts.spaceId.find(spaceId);

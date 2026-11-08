@@ -2,6 +2,7 @@ import { createHmac, randomUUID } from "node:crypto";
 import { DbConnection } from "../../../apps/web/src/module_bindings/index.ts";
 import { graphResultSchema, type GraphDetails, type GraphManifest, type GraphResult, type Network, type SpaceGraph } from "../validation/flowchart.ts";
 import { riskResultSchema, type RiskAssessment, type RiskResult } from "../validation/risk.ts";
+import { ticketsResultSchema, type TicketInput, type TicketsResult } from "../validation/tickets.ts";
 
 let pending: Promise<DbConnection> | undefined;
 function connect(): Promise<DbConnection> {
@@ -56,5 +57,13 @@ export class SpacetimeGraphStore {
   async riskHeartbeat() { await this.call("riskHeartbeat"); }
   async riskFail(error: string) { await this.call("riskFail", { error }); }
   async riskSave(assessment: RiskAssessment) { await this.call("riskSave", { assessment }); }
+  // Ticket-agent jobs, likewise with their own lease.
+  async ticketsBegin(): Promise<boolean> { return (await this.call("ticketsBegin")).started === true; }
+  async ticketsGet(): Promise<TicketsResult> { return ticketsResultSchema.parse(await this.call("ticketsGet")); }
+  async ticketsInputs(): Promise<unknown> { return this.call("ticketsInputs"); }
+  async ticketsStage(stage: string) { await this.call("ticketsStage", { stage }); }
+  async ticketsHeartbeat() { await this.call("ticketsHeartbeat"); }
+  async ticketsFail(error: string) { await this.call("ticketsFail", { error }); }
+  async ticketsSave(tickets: TicketInput[]) { await this.call("ticketsSave", { tickets }); }
   async checkpoint(graph: SpaceGraph, documents: GraphResult["documents"], stage: string, details: GraphDetails) { await this.call("checkpoint", { graph, documents, stage, details }); }
 }

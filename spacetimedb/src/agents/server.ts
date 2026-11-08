@@ -10,6 +10,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { SpacetimeGraphStore } from "./spacetime-graph-store.ts";
 import { generateFlowchart, GraphInputError } from "./flowchart.ts";
 import { analyzeRisk } from "./risk-agent.ts";
+import { generateTickets } from "./ticket-agent.ts";
+
+type BackgroundJob = { label: string; begin: () => Promise<boolean>; run: () => Promise<void>;
+  heartbeat: () => Promise<void>; fail: (message: string) => Promise<void>; get: () => Promise<object> };
 import { manifestSchema } from "../validation/flowchart.ts";
 
 const apiKey = process.env.AGENT_API_KEY;
@@ -76,7 +80,7 @@ const server = createServer(async (req, res) => {
         let grant;
         try { grant = JSON.parse(ticket.payload); }
         catch { send(400, { error: "Invalid flowchart authorization." }); return; }
-        if (!grant || !Number.isSafeInteger(grant.expiresAt) || grant.expiresAt < Date.now() || grant.expiresAt > Date.now() + 65_000 || !["get", "generate", "risk"].includes(grant.operation)) {
+        if (!grant || !Number.isSafeInteger(grant.expiresAt) || grant.expiresAt < Date.now() || grant.expiresAt > Date.now() + 65_000 || !["get", "generate", "risk", "tickets"].includes(grant.operation)) {
           send(401, { error: "Flowchart authorization expired. Please retry." }); return;
         }
         operation = grant.operation;
@@ -86,36 +90,41 @@ const server = createServer(async (req, res) => {
       if (!parsed.success) { send(400, { error: "Invalid graph request." }); return; }
       const manifest = parsed.data;
       const graphStore = new SpacetimeGraphStore(manifest);
-      if (operation === "risk") {
-        // Risk analysis runs only on an explicit button press; one job per space.
-        const riskKey = `${graphStore.key()}:risk`;
-        if (!jobs.has(riskKey)) {
+      if (operation === "risk" || operation === "tickets") {
+        // These agents run only on an explicit button press; one job per space.
+        const job: BackgroundJob = operation === "risk"
+          ? { label: "Risk analysis", begin: () => graphStore.riskBegin(), run: () => analyzeRisk(manifest, graphStore),
+              heartbeat: () => graphStore.riskHeartbeat(), fail: message => graphStore.riskFail(message), get: () => graphStore.riskGet() }
+          : { label: "Ticket generation", begin: () => graphStore.ticketsBegin(), run: () => generateTickets(manifest, graphStore),
+              heartbeat: () => graphStore.ticketsHeartbeat(), fail: message => graphStore.ticketsFail(message), get: () => graphStore.ticketsGet() };
+        const jobKey = `${graphStore.key()}:${operation}`;
+        if (!jobs.has(jobKey)) {
           if (jobs.size >= 4) { send(429, { error: "The agent is busy. Please try again shortly." }); return; }
           let started: boolean;
-          try { started = await graphStore.riskBegin(); }
+          try { started = await job.begin(); }
           catch (error) {
             // Preconditions (no flowchart, generation running) come from the database.
-            const message = (error instanceof Error ? error.message : typeof error === "string" ? error : "").replace(/^.*fatal error:s*/i, "");
-            send(409, { error: message.slice(0, 300) || "Risk analysis could not start. Please retry." });
+            const message = (error instanceof Error ? error.message : typeof error === "string" ? error : "").replace(/^.*fatal error:\s*/i, "");
+            send(409, { error: message.slice(0, 300) || `${job.label} could not start. Please retry.` });
             return;
           }
           if (started) {
-            const heartbeat = setInterval(() => { void graphStore.riskHeartbeat().catch(() => {}); }, 30000);
-            const job = analyzeRisk(manifest, graphStore)
+            const heartbeat = setInterval(() => { void job.heartbeat().catch(() => {}); }, 30000);
+            const running = job.run()
               .catch(async error => {
-                await graphStore.riskFail(generationFailure(error).replace("Graph generation", "Risk analysis")).catch(() => {});
-                console.error("Risk job failed", error instanceof Error ? error.name : "UnknownError");
-              }).finally(() => { clearInterval(heartbeat); jobs.delete(riskKey); });
-            jobs.set(riskKey, job);
+                await job.fail(generationFailure(error).replace("Graph generation", job.label)).catch(() => {});
+                console.error(`${job.label} job failed`, error instanceof Error ? error.name : "UnknownError");
+              }).finally(() => { clearInterval(heartbeat); jobs.delete(jobKey); });
+            jobs.set(jobKey, running);
           }
         }
-        send(200, await graphStore.riskGet());
+        send(200, await job.get());
         return;
       }
       const key = graphStore.key();
       if (operation === "generate" && !jobs.has(key)) {
         if (!manifest.documents.length) { send(400, { error: "Add and verify PDF documents before generating a flowchart." }); return; }
-        if ([...jobs.keys()].filter(item => !item.endsWith(":risk")).length >= 2) { send(429, { error: "The agent is busy. Please try again shortly." }); return; }
+        if ([...jobs.keys()].filter(item => !/:(risk|tickets)$/.test(item)).length >= 2) { send(429, { error: "The agent is busy. Please try again shortly." }); return; }
         const started = await graphStore.begin(manifest);
         if (!started) { send(200, await graphStore.get(manifest)); return; }
         const heartbeat = setInterval(() => { void graphStore.heartbeat().catch(() => {}); }, 30000);

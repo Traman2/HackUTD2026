@@ -13,8 +13,10 @@ import * as CleanupDocumentUploadProcedure from "../cleanup_document_upload_proc
 import * as ConfirmDocumentUploadProcedure from "../confirm_document_upload_procedure.ts";
 import * as CreateSpaceWithIdProcedure from "../create_space_with_id_procedure.ts";
 import * as GenerateSpaceFlowchartProcedure from "../generate_space_flowchart_procedure.ts";
+import * as GenerateSpaceTicketsProcedure from "../generate_space_tickets_procedure.ts";
 import * as GetSpaceFlowchartProcedure from "../get_space_flowchart_procedure.ts";
 import * as GetSpaceRiskProcedure from "../get_space_risk_procedure.ts";
+import * as GetSpaceTicketsProcedure from "../get_space_tickets_procedure.ts";
 import * as RequestDocumentDownloadProcedure from "../request_document_download_procedure.ts";
 import * as RequestDocumentUploadProcedure from "../request_document_upload_procedure.ts";
 import * as RetryDocumentUploadProcedure from "../retry_document_upload_procedure.ts";
@@ -33,10 +35,14 @@ export type CreateSpaceWithIdArgs = __Infer<typeof CreateSpaceWithIdProcedure.pa
 export type CreateSpaceWithIdResult = __Infer<typeof CreateSpaceWithIdProcedure.returnType>;
 export type GenerateSpaceFlowchartArgs = __Infer<typeof GenerateSpaceFlowchartProcedure.params>;
 export type GenerateSpaceFlowchartResult = __Infer<typeof GenerateSpaceFlowchartProcedure.returnType>;
+export type GenerateSpaceTicketsArgs = __Infer<typeof GenerateSpaceTicketsProcedure.params>;
+export type GenerateSpaceTicketsResult = __Infer<typeof GenerateSpaceTicketsProcedure.returnType>;
 export type GetSpaceFlowchartArgs = __Infer<typeof GetSpaceFlowchartProcedure.params>;
 export type GetSpaceFlowchartResult = __Infer<typeof GetSpaceFlowchartProcedure.returnType>;
 export type GetSpaceRiskArgs = __Infer<typeof GetSpaceRiskProcedure.params>;
 export type GetSpaceRiskResult = __Infer<typeof GetSpaceRiskProcedure.returnType>;
+export type GetSpaceTicketsArgs = __Infer<typeof GetSpaceTicketsProcedure.params>;
+export type GetSpaceTicketsResult = __Infer<typeof GetSpaceTicketsProcedure.returnType>;
 export type RequestDocumentDownloadArgs = __Infer<typeof RequestDocumentDownloadProcedure.params>;
 export type RequestDocumentDownloadResult = __Infer<typeof RequestDocumentDownloadProcedure.returnType>;
 export type RequestDocumentUploadArgs = __Infer<typeof RequestDocumentUploadProcedure.params>;
