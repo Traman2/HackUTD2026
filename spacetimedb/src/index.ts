@@ -1,4 +1,5 @@
 export { default } from "./schema";
+export { start_resolution_session, get_resolution_session, authorize_resolution_voice, set_resolution_session_status, confirm_resolution_action, agent_resolution_store } from "./controllers/resolution";
 export { signup, login, logout } from "./controllers/auth";
 export { save_profile, delete_profile, my_profile } from "./controllers/profile";
 export { ask_agent } from "./controllers/agent";

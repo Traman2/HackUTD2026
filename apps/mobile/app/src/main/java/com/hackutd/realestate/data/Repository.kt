@@ -21,6 +21,18 @@ class Repository(
     /** The signed-in user, or null when signed out. */
     val profile: StateFlow<Profile?> = _profile.asStateFlow()
 
+    /** Voice procedures return a JSON string encoded by the database HTTP API. */
+    suspend fun voiceCall(name: String, args: JSONArray): JSONObject {
+        val body = client.callProcedure(ensureToken(), name, args)
+        val decoded = JSONTokener(body).nextValue()
+        return if (decoded is String) JSONObject(decoded) else decoded as JSONObject
+    }
+
+    suspend fun pauseVoice(sessionId: String, ended: Boolean = false) {
+        client.callReducer(ensureToken(), "set_resolution_session_status",
+            JSONArray().put(sessionId).put(if (ended) "ended" else "paused"))
+    }
+
     /** The saved identity token, or a new one from the backend (saved for next time). */
     suspend fun ensureToken(): String = tokenMutex.withLock {
         session.token() ?: client.createIdentity().also { session.save(it) }
@@ -135,7 +147,7 @@ class Repository(
         photo: PreparedPhoto,
         source: String = "phone",
         caption: String = "",
-    ) {
+    ): Long {
         val token = ensureToken()
         val response = client.callProcedure(
             token, "request_ticket_photo_upload",
@@ -149,6 +161,7 @@ class Repository(
         if (confirmed.trim() == "false") {
             throw SpacetimeException("The photo couldn't be verified. Try again.", 200)
         }
+        return photoId
     }
 
     private suspend fun queryTickets(where: String): List<Ticket> {

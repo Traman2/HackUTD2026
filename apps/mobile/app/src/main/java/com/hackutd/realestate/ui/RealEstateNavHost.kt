@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +34,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.hackutd.realestate.MainActivity
 import com.hackutd.realestate.ui.resolution.ResolutionModeScreen
+import com.hackutd.realestate.ui.theme.RealEstateTheme
 
 object Routes {
     const val LOGIN = "login"
@@ -119,11 +119,11 @@ private fun AppNavigation(appViewModel: AppViewModel, startRoute: String, glasse
                 viewModelStoreOwner = ticketEntry,
                 factory = appFactory { app, saved -> TicketDetailViewModel(app.repository, saved) },
             )
-            ResolutionModeScreen(
+            RealEstateTheme(darkTheme = true) { ResolutionModeScreen(
                 activity = glassesActivity,
                 ticketViewModel = ticketViewModel,
                 onBack = { navController.popBackStack() },
-            )
+            ) }
         }
     }
 }
@@ -149,7 +149,7 @@ private fun StartError(message: String, onRetry: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(message, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
-            Button(onClick = onRetry) { Text("Retry") }
+            AppButton("Retry", onClick = onRetry, variant = ButtonVariant.Secondary)
         }
     }
 }

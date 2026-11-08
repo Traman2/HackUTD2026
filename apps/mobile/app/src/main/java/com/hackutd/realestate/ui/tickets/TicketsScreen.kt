@@ -1,42 +1,30 @@
 package com.hackutd.realestate.ui.tickets
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +35,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -55,8 +42,15 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hackutd.realestate.data.Ticket
-import com.hackutd.realestate.ui.Chip
+import com.hackutd.realestate.ui.AppCard
+import com.hackutd.realestate.ui.AppTopBar
+import com.hackutd.realestate.ui.Badge
+import com.hackutd.realestate.ui.FilterPill
 import com.hackutd.realestate.ui.MessageWithAction
+import com.hackutd.realestate.ui.ProgressBar
+import com.hackutd.realestate.ui.SectionLabel
+import com.hackutd.realestate.ui.StatusDot
+import com.hackutd.realestate.ui.theme.AppTheme
 import com.hackutd.realestate.ui.StatusChip
 import com.hackutd.realestate.ui.appFactory
 import com.hackutd.realestate.ui.kindLabel
@@ -90,19 +84,9 @@ fun TicketsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        state.spaceName.ifBlank { "Tickets" },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            AppTopBar(
+                title = state.spaceName.ifBlank { "Tickets" },
+                onBack = onBack,
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -138,15 +122,11 @@ private fun FilterRow(selected: TicketFilter, onSelect: (TicketFilter) -> Unit) 
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         TicketFilter.entries.forEach { filter ->
-            FilterChip(
-                selected = filter == selected,
-                onClick = { onSelect(filter) },
-                label = { Text(filter.label) },
-            )
+            FilterPill(filter.label, selected = filter == selected, onClick = { onSelect(filter) })
         }
     }
 }
@@ -161,7 +141,7 @@ private fun TicketsList(tickets: List<Ticket>, filter: TicketFilter, onOpenTicke
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (visible.isEmpty()) {
@@ -171,7 +151,7 @@ private fun TicketsList(tickets: List<Ticket>, filter: TicketFilter, onOpenTicke
                         if (tickets.isEmpty()) "No tickets yet. Generate tickets on the web app."
                         else "No ${filter.label.lowercase()} tickets.",
                         textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = AppTheme.colors.muted,
                     )
                 }
             }
@@ -188,16 +168,11 @@ private fun TicketsList(tickets: List<Ticket>, filter: TicketFilter, onOpenTicke
                         .padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "Done (${done.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
+                    SectionLabel("Done · ${done.size}", Modifier.weight(1f))
                     Icon(
                         if (doneExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                         contentDescription = if (doneExpanded) "Hide done tickets" else "Show done tickets",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = AppTheme.colors.muted,
                     )
                 }
             }
@@ -212,68 +187,42 @@ private fun TicketsList(tickets: List<Ticket>, filter: TicketFilter, onOpenTicke
 
 @Composable
 private fun TicketCard(ticket: Ticket, onClick: () -> Unit) {
+    val colors = AppTheme.colors
     val total = ticket.steps.size
     val completed = ticket.completedSteps
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Row(Modifier.height(IntrinsicSize.Min)) {
-            // Priority color bar down the left edge.
-            Box(
-                Modifier
-                    .width(6.dp)
-                    .fillMaxHeight()
-                    .background(priorityColor(ticket.priority)),
+    AppCard(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatusDot(priorityColor(ticket.priority))
+            Text(
+                priorityLabel(ticket.priority),
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.muted,
             )
-            Column(
-                modifier = Modifier.padding(16.dp).weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        priorityLabel(ticket.priority).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = priorityColor(ticket.priority),
-                    )
-                    Spacer(Modifier.weight(1f))
-                    StatusChip(ticket.status)
-                }
-                Text(
-                    ticket.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
+            Spacer(Modifier.weight(1f))
+            StatusChip(ticket.status)
+        }
+        Text(
+            ticket.title,
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (ticket.assetLabel.isNotBlank()) Badge(ticket.assetLabel)
+            Badge(kindLabel(ticket.kind))
+        }
+        if (total > 0) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                ProgressBar(
+                    progress = completed.toFloat() / total,
+                    color = if (completed == total) colors.green else colors.foreground,
+                    modifier = Modifier.weight(1f),
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (ticket.assetLabel.isNotBlank()) {
-                        Chip(
-                            ticket.assetLabel,
-                            MaterialTheme.colorScheme.secondaryContainer,
-                            MaterialTheme.colorScheme.onSecondaryContainer,
-                        )
-                    }
-                    Chip(
-                        kindLabel(ticket.kind),
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                if (total > 0) {
-                    Text(
-                        "$completed of $total steps",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    LinearProgressIndicator(
-                        progress = { completed.toFloat() / total },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                Text(
+                    "$completed/$total steps",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.muted,
+                )
             }
         }
     }

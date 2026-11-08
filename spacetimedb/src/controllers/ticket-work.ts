@@ -38,19 +38,7 @@ export const update_ticket_step = spacetimedb.reducer(
   (ctx, input) => {
     const actor = requireUser(ctx);
     const ticket = requireTicket(ctx, input.ticketId, true);
-    const parsed = stepUpdateSchema.safeParse(input);
-    if (!parsed.success) throw new SenderError(parsed.error.issues[0]!.message);
-    if (!WORKABLE.has(ticket.status)) throw new SenderError(`This ticket is ${ticket.status.replace("_", " ")}. Reopen it before changing steps.`);
-    requireStep(ticket, input.stepOrder);
-    const { status, result } = parsed.data;
-    const steps = ticket.steps.map(step => step.order !== input.stepOrder ? step : {
-      ...step, status, result: result || undefined, completedAt: status === "pending" ? undefined : ctx.timestamp,
-    });
-    // Starting work on any step moves an open ticket to in progress.
-    const next = ticket.status === "open" && status !== "pending" ? "in_progress" : ticket.status;
-    ctx.db.tickets.id.update({ ...ticket, steps, status: next, updatedAt: ctx.timestamp });
-    logEvent(ctx.db, ticket, actor, "step", input.stepOrder, result ? `${status}: ${result}` : status, ctx.timestamp);
-    if (next !== ticket.status) logEvent(ctx.db, ticket, actor, "status", 0, `${ticket.status} -> ${next}`, ctx.timestamp);
+    applyTicketStep(ctx.db, ticket, actor, input, ctx.timestamp);
   },
 );
 
@@ -60,16 +48,7 @@ export const set_ticket_status = spacetimedb.reducer(
   (ctx, input) => {
     const actor = requireUser(ctx);
     const ticket = requireTicket(ctx, input.ticketId, true);
-    const parsed = ticketStatusUpdateSchema.safeParse(input);
-    if (!parsed.success) throw new SenderError(parsed.error.issues[0]!.message);
-    const { status, note } = parsed.data;
-    if (status === ticket.status) return;
-    if (!TRANSITIONS[ticket.status]?.includes(status)) throw new SenderError(`A ${ticket.status.replace("_", " ")} ticket cannot become ${status.replace("_", " ")}.`);
-    if (status === "resolved" && ticket.steps.some(step => step.status === "pending")) {
-      throw new SenderError("Complete or skip every step before resolving the ticket.");
-    }
-    ctx.db.tickets.id.update({ ...ticket, status, updatedAt: ctx.timestamp });
-    logEvent(ctx.db, ticket, actor, "status", 0, `${ticket.status} -> ${status}${note ? `: ${note}` : ""}`, ctx.timestamp);
+    applyTicketStatus(ctx.db, ticket, actor, input, ctx.timestamp);
   },
 );
 
@@ -212,3 +191,32 @@ export const my_tickets = spacetimedb.view({ public: true }, t.array(ticketRow),
 export const my_ticket_photos = spacetimedb.view({ public: true }, t.array(ticketPhotoRow), ctx =>
   ownedSpaceIds(ctx).flatMap(spaceId => Array.from(ctx.db.ticketPhotos.spaceId.filter(spaceId))
     .map(({ storageKey, storageBucket, storageRegion, checksumSha256, ownerUsername, ...summary }) => summary)));
+
+export function applyTicketStep(db: Db, ticket: Ticket, actor: string, input: { stepOrder: number; status: string; result: string }, at: Timestamp) {
+    const parsed = stepUpdateSchema.safeParse(input);
+    if (!parsed.success) throw new SenderError(parsed.error.issues[0]!.message);
+    if (!WORKABLE.has(ticket.status)) throw new SenderError(`This ticket is ${ticket.status.replace("_", " ")}. Reopen it before changing steps.`);
+    requireStep(ticket, input.stepOrder);
+    const { status, result } = parsed.data;
+    const steps = ticket.steps.map(step => step.order !== input.stepOrder ? step : {
+      ...step, status, result: result || undefined, completedAt: status === "pending" ? undefined : at,
+    });
+    // Starting work on any step moves an open ticket to in progress.
+    const next = ticket.status === "open" && status !== "pending" ? "in_progress" : ticket.status;
+    db.tickets.id.update({ ...ticket, steps, status: next, updatedAt: at });
+    logEvent(db, ticket, actor, "step", input.stepOrder, result ? `${status}: ${result}` : status, at);
+    if (next !== ticket.status) logEvent(db, ticket, actor, "status", 0, `${ticket.status} -> ${next}`, at);
+}
+
+export function applyTicketStatus(db: Db, ticket: Ticket, actor: string, input: { status: string; note: string }, at: Timestamp) {
+    const parsed = ticketStatusUpdateSchema.safeParse(input);
+    if (!parsed.success) throw new SenderError(parsed.error.issues[0]!.message);
+    const { status, note } = parsed.data;
+    if (status === ticket.status) return;
+    if (!TRANSITIONS[ticket.status]?.includes(status)) throw new SenderError(`A ${ticket.status.replace("_", " ")} ticket cannot become ${status.replace("_", " ")}.`);
+    if (status === "resolved" && ticket.steps.some(step => step.status === "pending")) {
+      throw new SenderError("Complete or skip every step before resolving the ticket.");
+    }
+    db.tickets.id.update({ ...ticket, status, updatedAt: at });
+    logEvent(db, ticket, actor, "status", 0, `${ticket.status} -> ${status}${note ? `: ${note}` : ""}`, at);
+}

@@ -7,15 +7,19 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
 import * as AgentFlowchartStoreProcedure from "../agent_flowchart_store_procedure.ts";
+import * as AgentResolutionStoreProcedure from "../agent_resolution_store_procedure.ts";
 import * as AnalyzeSpaceRiskProcedure from "../analyze_space_risk_procedure.ts";
 import * as AskAgentProcedure from "../ask_agent_procedure.ts";
+import * as AuthorizeResolutionVoiceProcedure from "../authorize_resolution_voice_procedure.ts";
 import * as AuthorizeSpaceChatProcedure from "../authorize_space_chat_procedure.ts";
 import * as CleanupDocumentUploadProcedure from "../cleanup_document_upload_procedure.ts";
 import * as ConfirmDocumentUploadProcedure from "../confirm_document_upload_procedure.ts";
+import * as ConfirmResolutionActionProcedure from "../confirm_resolution_action_procedure.ts";
 import * as ConfirmTicketPhotoUploadProcedure from "../confirm_ticket_photo_upload_procedure.ts";
 import * as CreateSpaceWithIdProcedure from "../create_space_with_id_procedure.ts";
 import * as GenerateSpaceFlowchartProcedure from "../generate_space_flowchart_procedure.ts";
 import * as GenerateSpaceTicketsProcedure from "../generate_space_tickets_procedure.ts";
+import * as GetResolutionSessionProcedure from "../get_resolution_session_procedure.ts";
 import * as GetSpaceFlowchartProcedure from "../get_space_flowchart_procedure.ts";
 import * as GetSpaceRiskProcedure from "../get_space_risk_procedure.ts";
 import * as GetSpaceTicketsProcedure from "../get_space_tickets_procedure.ts";
@@ -25,19 +29,26 @@ import * as RequestDocumentUploadProcedure from "../request_document_upload_proc
 import * as RequestTicketPhotoDownloadProcedure from "../request_ticket_photo_download_procedure.ts";
 import * as RequestTicketPhotoUploadProcedure from "../request_ticket_photo_upload_procedure.ts";
 import * as RetryDocumentUploadProcedure from "../retry_document_upload_procedure.ts";
+import * as StartResolutionSessionProcedure from "../start_resolution_session_procedure.ts";
 
 export type AgentFlowchartStoreArgs = __Infer<typeof AgentFlowchartStoreProcedure.params>;
 export type AgentFlowchartStoreResult = __Infer<typeof AgentFlowchartStoreProcedure.returnType>;
+export type AgentResolutionStoreArgs = __Infer<typeof AgentResolutionStoreProcedure.params>;
+export type AgentResolutionStoreResult = __Infer<typeof AgentResolutionStoreProcedure.returnType>;
 export type AnalyzeSpaceRiskArgs = __Infer<typeof AnalyzeSpaceRiskProcedure.params>;
 export type AnalyzeSpaceRiskResult = __Infer<typeof AnalyzeSpaceRiskProcedure.returnType>;
 export type AskAgentArgs = __Infer<typeof AskAgentProcedure.params>;
 export type AskAgentResult = __Infer<typeof AskAgentProcedure.returnType>;
+export type AuthorizeResolutionVoiceArgs = __Infer<typeof AuthorizeResolutionVoiceProcedure.params>;
+export type AuthorizeResolutionVoiceResult = __Infer<typeof AuthorizeResolutionVoiceProcedure.returnType>;
 export type AuthorizeSpaceChatArgs = __Infer<typeof AuthorizeSpaceChatProcedure.params>;
 export type AuthorizeSpaceChatResult = __Infer<typeof AuthorizeSpaceChatProcedure.returnType>;
 export type CleanupDocumentUploadArgs = __Infer<typeof CleanupDocumentUploadProcedure.params>;
 export type CleanupDocumentUploadResult = __Infer<typeof CleanupDocumentUploadProcedure.returnType>;
 export type ConfirmDocumentUploadArgs = __Infer<typeof ConfirmDocumentUploadProcedure.params>;
 export type ConfirmDocumentUploadResult = __Infer<typeof ConfirmDocumentUploadProcedure.returnType>;
+export type ConfirmResolutionActionArgs = __Infer<typeof ConfirmResolutionActionProcedure.params>;
+export type ConfirmResolutionActionResult = __Infer<typeof ConfirmResolutionActionProcedure.returnType>;
 export type ConfirmTicketPhotoUploadArgs = __Infer<typeof ConfirmTicketPhotoUploadProcedure.params>;
 export type ConfirmTicketPhotoUploadResult = __Infer<typeof ConfirmTicketPhotoUploadProcedure.returnType>;
 export type CreateSpaceWithIdArgs = __Infer<typeof CreateSpaceWithIdProcedure.params>;
@@ -46,6 +57,8 @@ export type GenerateSpaceFlowchartArgs = __Infer<typeof GenerateSpaceFlowchartPr
 export type GenerateSpaceFlowchartResult = __Infer<typeof GenerateSpaceFlowchartProcedure.returnType>;
 export type GenerateSpaceTicketsArgs = __Infer<typeof GenerateSpaceTicketsProcedure.params>;
 export type GenerateSpaceTicketsResult = __Infer<typeof GenerateSpaceTicketsProcedure.returnType>;
+export type GetResolutionSessionArgs = __Infer<typeof GetResolutionSessionProcedure.params>;
+export type GetResolutionSessionResult = __Infer<typeof GetResolutionSessionProcedure.returnType>;
 export type GetSpaceFlowchartArgs = __Infer<typeof GetSpaceFlowchartProcedure.params>;
 export type GetSpaceFlowchartResult = __Infer<typeof GetSpaceFlowchartProcedure.returnType>;
 export type GetSpaceRiskArgs = __Infer<typeof GetSpaceRiskProcedure.params>;
@@ -64,4 +77,6 @@ export type RequestTicketPhotoUploadArgs = __Infer<typeof RequestTicketPhotoUplo
 export type RequestTicketPhotoUploadResult = __Infer<typeof RequestTicketPhotoUploadProcedure.returnType>;
 export type RetryDocumentUploadArgs = __Infer<typeof RetryDocumentUploadProcedure.params>;
 export type RetryDocumentUploadResult = __Infer<typeof RetryDocumentUploadProcedure.returnType>;
+export type StartResolutionSessionArgs = __Infer<typeof StartResolutionSessionProcedure.params>;
+export type StartResolutionSessionResult = __Infer<typeof StartResolutionSessionProcedure.returnType>;
 

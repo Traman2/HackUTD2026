@@ -39,11 +39,19 @@ export default function SpaceDetails() {
   const openGraphSource = useCallback((documentId: bigint, page: number) => { setPreviewPage(page); setPreviewId(documentId); }, []);
   const filesButton = useRef<HTMLButtonElement>(null);
 
-  // Both right-hand panels share one width so switching between them is stable.
+  // Files and risks share a width; node details open wider for easier reading.
   const [workspace, workspaceWidth] = useElementWidth<HTMLDivElement>();
   const sidePanel = useResizableWidth({
     containerWidth: workspaceWidth,
     defaultRatio: 0.25,
+    minWidth: 240,
+    maxWidth: workspaceWidth < 640 ? workspaceWidth : workspaceWidth * 0.7,
+    side: "right",
+    valueLabel: "workspace",
+  });
+  const nodePanel = useResizableWidth({
+    containerWidth: workspaceWidth,
+    defaultRatio: 0.4,
     minWidth: 240,
     maxWidth: workspaceWidth < 640 ? workspaceWidth : workspaceWidth * 0.7,
     side: "right",
@@ -101,9 +109,11 @@ export default function SpaceDetails() {
   }
 
   function sidePanelShell(panelId: string, label: string, resizeLabel: string, open: boolean, onClose: () => void, children: ReactNode) {
+    const isNodePanel = panelId === "space-node-panel";
+    const panel = isNodePanel ? nodePanel : sidePanel;
     return (
-      <aside id={panelId} aria-label={label} aria-hidden={!open} inert={!open} style={{ width: workspaceWidth ? sidePanel.width : "25%" }} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); onClose(); } }} className={`absolute inset-y-0 right-0 z-20 flex max-w-full flex-col border-l border-[#e3e3e7] bg-white shadow-lg transition-transform duration-250 ease-out motion-reduce:transition-none ${open ? "translate-x-0" : "translate-x-full"}`}>
-        <ResizeHandle label={resizeLabel} controls={panelId} visible={open} handleProps={sidePanel.handleProps} />
+      <aside id={panelId} aria-label={label} aria-hidden={!open} inert={!open} style={{ width: workspaceWidth ? panel.width : isNodePanel ? "40%" : "25%" }} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); onClose(); } }} className={`absolute inset-y-0 right-0 z-20 flex max-w-full flex-col border-l border-[#e3e3e7] bg-white shadow-lg transition-transform duration-250 ease-out motion-reduce:transition-none ${open ? "translate-x-0" : "translate-x-full"}`}>
+        <ResizeHandle label={resizeLabel} controls={panelId} visible={open} handleProps={panel.handleProps} />
         {children}
       </aside>
     );
@@ -112,7 +122,7 @@ export default function SpaceDetails() {
   if (isActive && profileReady && !profile) return <Navigate to="/login" replace />;
 
   return (
-    <div className={`flex h-svh flex-col overflow-hidden bg-[#faf9f6] text-[#37352f] ${sidePanel.resizing ? "cursor-col-resize select-none" : ""}`}>
+    <div className={`flex h-svh flex-col overflow-hidden bg-[#faf9f6] text-[#37352f] ${sidePanel.resizing || nodePanel.resizing ? "cursor-col-resize select-none" : ""}`}>
       <header className="flex h-12 shrink-0 items-center border-b border-[#e3e3e7] bg-white">
         <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#e3e3e7]">
           <Link to="/spaces" aria-label="Back to your spaces" title="Back to your spaces" className="flex size-8 items-center justify-center rounded-md text-[#78766e] transition-colors hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">

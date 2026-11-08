@@ -24,7 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,13 +69,18 @@ import com.hackutd.realestate.RealEstateApp
 import com.hackutd.realestate.data.Ticket
 import com.hackutd.realestate.data.TicketStep
 import com.hackutd.realestate.glasses.GlassesConnection
+import com.hackutd.realestate.ui.AppButton
+import com.hackutd.realestate.ui.ButtonVariant
 import com.hackutd.realestate.ui.GlassesIcon
+import androidx.compose.foundation.BorderStroke
 import com.hackutd.realestate.ui.tickets.PhotoBadge
 import com.hackutd.realestate.ui.tickets.TicketDetailUiState
 import com.hackutd.realestate.ui.tickets.TicketDetailViewModel
 import com.meta.wearable.dat.camera.types.StreamState
 import com.meta.wearable.dat.core.types.RegistrationState
 import kotlinx.coroutines.launch
+import com.hackutd.realestate.voice.VoiceViewModel
+import com.hackutd.realestate.voice.VoicePanel
 
 class ResolutionViewModel(app: Application) : AndroidViewModel(app) {
     val glasses = (app as RealEstateApp).glasses
@@ -90,12 +94,16 @@ fun ResolutionModeScreen(
     ticketViewModel: TicketDetailViewModel,
     onBack: () -> Unit,
     viewModel: ResolutionViewModel = viewModel(),
+    voice: VoiceViewModel = viewModel(),
 ) {
     val glasses = viewModel.glasses
     val connection by glasses.connection.collectAsStateWithLifecycle()
     val registration by glasses.registration.collectAsStateWithLifecycle()
     val preview by glasses.video.state.collectAsStateWithLifecycle()
     val ticketState by ticketViewModel.state.collectAsStateWithLifecycle()
+    val voiceState by voice.state.collectAsStateWithLifecycle()
+    LaunchedEffect(voiceState.ticketChange) { if (voiceState.ticketChange > 0) ticketViewModel.load() }
+    DisposableEffect(voice) { onDispose { voice.stop() } }
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
@@ -142,6 +150,7 @@ fun ResolutionModeScreen(
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         if (!activity.isChangingConfigurations) {
+            voice.stop()
             resumeConnection = glasses.session.value != null
             glasses.disconnect()
         }
@@ -230,15 +239,18 @@ fun ResolutionModeScreen(
                 )
             }
         }
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.72f)
+            .navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        ticketState.ticket?.let { VoicePanel(it.id, voiceState, voice) }
         ChecklistOverlay(
             state = ticketState,
             onToggle = { step ->
                 ticketViewModel.updateStep(step.order, if (step.status == "done") "pending" else "done", step.result.orEmpty())
             },
             onRetry = { ticketViewModel.load(userInitiated = true) },
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.5f)
-                .navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f),
         )
+        }
         SnackbarHost(snackbar, Modifier.align(Alignment.Center).padding(16.dp))
     }
     if (settingsOpen) {
@@ -246,7 +258,7 @@ fun ResolutionModeScreen(
             Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("Glasses", style = MaterialTheme.typography.titleLarge)
                 Text(connectionMessage, Modifier.padding(vertical = 12.dp), textAlign = TextAlign.Center)
-                TextButton(enabled = !busy, onClick = { reconnect(); settingsOpen = false }) { Text("Reconnect") }
+                AppButton("Reconnect", onClick = { reconnect(); settingsOpen = false }, enabled = !busy, variant = ButtonVariant.Secondary, modifier = Modifier.fillMaxWidth())
             }
         }
     }
@@ -254,14 +266,14 @@ fun ResolutionModeScreen(
 
 @Composable
 private fun ConnectionPanel(message: String, waiting: Boolean, paused: Boolean, action: String, onConnect: () -> Unit) {
-    Surface(color = Color.Black.copy(alpha = 0.7f), contentColor = Color.White, shape = RoundedCornerShape(20.dp)) {
+    Surface(color = Color.Black.copy(alpha = 0.7f), contentColor = Color.White, shape = RoundedCornerShape(16.dp), border = GlassBorder) {
         Column(
             Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (waiting && !paused) CircularProgressIndicator(Modifier.size(28.dp), color = Color.White)
             Text(message, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-            if (!waiting && !paused) Button(onClick = onConnect) { Text(action) }
+            if (!waiting && !paused) AppButton(action, onClick = onConnect, icon = GlassesIcon)
         }
     }
 }
@@ -281,7 +293,7 @@ private fun ChecklistOverlay(
         ticket?.steps?.indexOfFirst { it.order == current }?.takeIf { it >= 0 }?.let { listState.animateScrollToItem(it) }
     }
     Surface(
-        modifier, shape = RoundedCornerShape(22.dp),
+        modifier, shape = RoundedCornerShape(16.dp), border = GlassBorder,
         color = Color.Black.copy(alpha = 0.65f), contentColor = Color.White,
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -374,3 +386,6 @@ private fun ChecklistStep(step: TicketStep, ticket: Ticket, state: TicketDetailU
         }
     }
 }
+
+/** Hairline border for the dark glass panels over the video. */
+internal val GlassBorder = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))

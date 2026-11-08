@@ -1,4 +1,5 @@
 import { createServer } from "node:http";
+import { attachVoiceServer } from "./voice-server.ts";
 import process from "node:process";
 import { bedrockModelId, createBedrockClient } from "../clients/bedrock.ts";
 import {
@@ -190,6 +191,7 @@ const server = createServer(async (req, res) => {
   }
 });
 server.requestTimeout = 15000;
+attachVoiceServer(server, apiKey);
 server.listen(
   Number(process.env.AGENT_PORT || 3001),
   process.env.AGENT_HOST || "127.0.0.1",

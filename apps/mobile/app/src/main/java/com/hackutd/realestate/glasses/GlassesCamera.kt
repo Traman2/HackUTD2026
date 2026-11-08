@@ -1,6 +1,15 @@
 package com.hackutd.realestate.glasses
 
 import android.view.Surface
+import android.util.Base64
+import com.hackutd.realestate.data.PreparedPhoto
+import com.meta.wearable.dat.camera.types.PhotoData
+import java.io.ByteArrayOutputStream
+import java.security.MessageDigest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.meta.wearable.dat.camera.Camera
 import com.meta.wearable.dat.camera.addCamera
 import com.meta.wearable.dat.camera.types.StreamConfiguration
@@ -28,6 +37,7 @@ data class GlassesPreviewState(
 
 /** Owns one camera capability, and can rebuild its decoder after the UI surface changes. */
 class GlassesCamera(private val scope: CoroutineScope) {
+    private val captureMutex = Mutex()
     private val _state = MutableStateFlow(GlassesPreviewState())
     val state = _state.asStateFlow()
     private var camera: Camera? = null
@@ -41,6 +51,26 @@ class GlassesCamera(private val scope: CoroutineScope) {
     private var decoderWidth = 0
     private var decoderHeight = 0
     private val parameterSets = HevcParameterSets()
+
+    /** In-stream still capture: does not stop video or save a screenshot of the overlay. */
+    suspend fun capturePhoto(): PreparedPhoto = captureMutex.withLock {
+        val active = camera ?: error("Glasses camera is not connected.")
+        check(_state.value.stream == StreamState.STREAMING) { "Glasses camera is not streaming." }
+        val result = withTimeout(8000) { active.stream.capturePhoto() }
+        val photo = result.getOrNull() ?: error(result.errorOrNull()?.description ?: "Couldn't capture a glasses photo.")
+        withContext(Dispatchers.Default) {
+            val (bytes, contentType) = when (photo) {
+                is PhotoData.Bitmap -> {
+                    val output = ByteArrayOutputStream()
+                    check(photo.bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, output)) { "Couldn't encode the photo." }
+                    output.toByteArray() to "image/jpeg"
+                }
+                is PhotoData.HEIC -> ByteArray(photo.data.remaining()).also { photo.data.duplicate().get(it) } to "image/heic"
+            }
+            check(bytes.size in 100..15 * 1024 * 1024) { "Glasses photo size is unsupported." }
+            PreparedPhoto(bytes, contentType, Base64.encodeToString(MessageDigest.getInstance("SHA-256").digest(bytes), Base64.NO_WRAP))
+        }
+    }
 
     fun start(session: DeviceSession) {
         if (camera != null) return

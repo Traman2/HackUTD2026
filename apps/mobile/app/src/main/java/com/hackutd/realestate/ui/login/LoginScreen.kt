@@ -1,5 +1,6 @@
 package com.hackutd.realestate.ui.login
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -41,7 +40,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.hackutd.realestate.ui.AppButton
+import com.hackutd.realestate.ui.appTextFieldColors
 import com.hackutd.realestate.ui.repositoryFactory
+import com.hackutd.realestate.ui.theme.AppTheme
 
 @Composable
 fun LoginScreen(
@@ -86,19 +88,25 @@ private fun LoginForm(
 ) {
     val focusManager = LocalFocusManager.current
     var showPassword by rememberSaveable { mutableStateOf(false) }
+    val colors = AppTheme.colors
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            "REALestate",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            "Field resolution for your spaces",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(8.dp))
+        // Logo mark
+        Box(
+            Modifier.size(40.dp).background(colors.foreground, MaterialTheme.shapes.medium),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("R", color = colors.background, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Sign in to REALestate", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "Field resolution for your spaces",
+                style = MaterialTheme.typography.bodyLarge,
+                color = colors.muted,
+            )
+        }
+        Spacer(Modifier.height(4.dp))
 
         OutlinedTextField(
             value = state.username,
@@ -112,6 +120,8 @@ private fun LoginForm(
                 keyboardType = KeyboardType.Ascii,
                 imeAction = ImeAction.Next,
             ),
+            shape = MaterialTheme.shapes.medium,
+            colors = appTextFieldColors(),
             modifier = Modifier.fillMaxWidth(),
         )
 
@@ -125,7 +135,7 @@ private fun LoginForm(
                 if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 TextButton(onClick = { showPassword = !showPassword }) {
-                    Text(if (showPassword) "Hide" else "Show")
+                    Text(if (showPassword) "Hide" else "Show", color = colors.muted)
                 }
             },
             keyboardOptions = KeyboardOptions(
@@ -137,32 +147,27 @@ private fun LoginForm(
                 focusManager.clearFocus()
                 onSubmit()
             }),
+            shape = MaterialTheme.shapes.medium,
+            colors = appTextFieldColors(),
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Button(
+        AppButton(
+            text = "Sign in",
             onClick = {
                 focusManager.clearFocus()
                 onSubmit()
             },
             enabled = state.canSubmit,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) {
-            if (state.loading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(22.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-            } else {
-                Text("Sign in")
-            }
-        }
+            loading = state.loading,
+            large = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
 
         state.error?.let {
             Text(
                 it,
-                color = MaterialTheme.colorScheme.error,
+                color = colors.red,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -171,7 +176,7 @@ private fun LoginForm(
         Text(
             "Don't have an account? Create one on the web app.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = colors.muted,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         )

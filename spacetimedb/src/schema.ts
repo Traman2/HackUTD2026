@@ -6,8 +6,9 @@ import { documents, uploads, documentArtifacts, documentMetadata } from "./model
 import { flowcharts, flowchartOverviewCache } from "./models/flowchart";
 import { riskAssessments, riskEvents } from "./models/risk";
 import { tickets, ticketJobs, ticketPhotos, ticketEvents } from "./models/ticket";
+import { resolutionSessions, resolutionTurns, resolutionActions } from "./models/resolution";
 
-const spacetimedb = schema({ users, sessions, spaces, documents, uploads, documentArtifacts, documentMetadata, flowcharts, flowchartOverviewCache, riskAssessments, riskEvents, tickets, ticketJobs, ticketPhotos, ticketEvents }, {
+const spacetimedb = schema({ users, sessions, spaces, documents, uploads, documentArtifacts, documentMetadata, flowcharts, flowchartOverviewCache, riskAssessments, riskEvents, tickets, ticketJobs, ticketPhotos, ticketEvents, resolutionSessions, resolutionTurns, resolutionActions }, {
   env: {
     AGENT_URL: t.option(t.string()),
     AGENT_API_KEY: t.option(t.string()),

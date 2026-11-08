@@ -174,6 +174,54 @@ export const PdfUploadTicket = __t.object("PdfUploadTicket", {
 });
 export type PdfUploadTicket = __Infer<typeof PdfUploadTicket>;
 
+export const ResolutionActions = __t.object("ResolutionActions", {
+  id: __t.string(),
+  sessionId: __t.string(),
+  turnId: __t.string(),
+  kind: __t.string(),
+  stepOrder: __t.u32(),
+  status: __t.string(),
+  result: __t.string(),
+  expectedTicketVersion: __t.string(),
+  expectedRevision: __t.u32(),
+  state: __t.string(),
+  createdAt: __t.timestamp(),
+  confirmedAt: __t.option(__t.timestamp()),
+});
+export type ResolutionActions = __Infer<typeof ResolutionActions>;
+
+export const ResolutionSessions = __t.object("ResolutionSessions", {
+  id: __t.string(),
+  ticketId: __t.u64(),
+  ownerUsername: __t.string(),
+  actorIdentity: __t.identity(),
+  status: __t.string(),
+  activeStepOrder: __t.u32(),
+  revision: __t.u32(),
+  checklistJson: __t.string(),
+  grantNonce: __t.string(),
+  connectionId: __t.string(),
+  leaseUntil: __t.timestamp(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type ResolutionSessions = __Infer<typeof ResolutionSessions>;
+
+export const ResolutionTurns = __t.object("ResolutionTurns", {
+  id: __t.string(),
+  sessionId: __t.string(),
+  clientTurnId: __t.string(),
+  stepOrder: __t.u32(),
+  userTranscript: __t.string(),
+  assistantTranscript: __t.string(),
+  status: __t.string(),
+  intent: __t.string(),
+  modelId: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type ResolutionTurns = __Infer<typeof ResolutionTurns>;
+
 export const RiskAssessments = __t.object("RiskAssessments", {
   spaceId: __t.u64(),
   ownerUsername: __t.string(),
