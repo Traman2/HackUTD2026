@@ -9,6 +9,7 @@ import { type Infer as __Infer } from "spacetimedb";
 import * as AgentFlowchartStoreProcedure from "../agent_flowchart_store_procedure.ts";
 import * as AnalyzeSpaceRiskProcedure from "../analyze_space_risk_procedure.ts";
 import * as AskAgentProcedure from "../ask_agent_procedure.ts";
+import * as AuthorizeSpaceChatProcedure from "../authorize_space_chat_procedure.ts";
 import * as CleanupDocumentUploadProcedure from "../cleanup_document_upload_procedure.ts";
 import * as ConfirmDocumentUploadProcedure from "../confirm_document_upload_procedure.ts";
 import * as ConfirmTicketPhotoUploadProcedure from "../confirm_ticket_photo_upload_procedure.ts";
@@ -31,6 +32,8 @@ export type AnalyzeSpaceRiskArgs = __Infer<typeof AnalyzeSpaceRiskProcedure.para
 export type AnalyzeSpaceRiskResult = __Infer<typeof AnalyzeSpaceRiskProcedure.returnType>;
 export type AskAgentArgs = __Infer<typeof AskAgentProcedure.params>;
 export type AskAgentResult = __Infer<typeof AskAgentProcedure.returnType>;
+export type AuthorizeSpaceChatArgs = __Infer<typeof AuthorizeSpaceChatProcedure.params>;
+export type AuthorizeSpaceChatResult = __Infer<typeof AuthorizeSpaceChatProcedure.returnType>;
 export type CleanupDocumentUploadArgs = __Infer<typeof CleanupDocumentUploadProcedure.params>;
 export type CleanupDocumentUploadResult = __Infer<typeof CleanupDocumentUploadProcedure.returnType>;
 export type ConfirmDocumentUploadArgs = __Infer<typeof ConfirmDocumentUploadProcedure.params>;

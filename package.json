@@ -7,6 +7,7 @@
   "scripts": {
     "dev:web": "pnpm --dir apps/web dev",
     "dev:agent": "pnpm --dir spacetimedb dev:agent",
+    "dev:ui-mcp": "node --watch apps/web/server/start.ts",
     "dev:spacetime": "spacetime dev",
     "tunnel": "node --env-file-if-exists=.env.local scripts/tunnel.mjs",
     "tunnel:router": "node scripts/tunnel-router.mjs",

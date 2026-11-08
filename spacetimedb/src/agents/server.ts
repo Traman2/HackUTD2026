@@ -11,6 +11,7 @@ import { SpacetimeGraphStore } from "./spacetime-graph-store.ts";
 import { generateFlowchart, GraphInputError } from "./flowchart.ts";
 import { analyzeRisk } from "./risk-agent.ts";
 import { generateTickets } from "./ticket-agent.ts";
+import { ChatServiceError, chatInputSchema, runSpaceChat } from "./space-chat.ts";
 
 type BackgroundJob = { label: string; begin: () => Promise<boolean>; run: () => Promise<void>;
   heartbeat: () => Promise<void>; fail: (message: string) => Promise<void>; get: () => Promise<object> };
@@ -46,11 +47,11 @@ const server = createServer(async (req, res) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(body));
   };
-  if (req.method !== "POST" || !["/invoke", "/flowchart/start", "/flowchart/get", "/flowchart/dispatch"].includes(req.url || "")) {
+  if (req.method !== "POST" || !["/chat", "/invoke", "/flowchart/start", "/flowchart/get", "/flowchart/dispatch"].includes(req.url || "")) {
     send(404, { error: "Not found" });
     return;
   }
-  if (req.url !== "/flowchart/dispatch" && req.headers.authorization !== `Bearer ${apiKey}`) {
+  if (req.url !== "/chat" && req.url !== "/flowchart/dispatch" && req.headers.authorization !== `Bearer ${apiKey}`) {
     send(401, { error: "Unauthorized" });
     return;
   }
@@ -62,6 +63,25 @@ const server = createServer(async (req, res) => {
         send(413, { error: "Request too large" });
         return;
       }
+    }
+    if (req.url === "/chat") {
+      const input = chatInputSchema.safeParse(JSON.parse(body));
+      if (!input.success) { send(400, { error: "Invalid chat request." }); return; }
+      const { payload, signature } = input.data.ticket;
+      if (!timingSafeEqual(createHmac("sha256", apiKey).update(payload).digest(), Buffer.from(signature, "hex"))) {
+        send(401, { error: "Invalid chat authorization." }); return;
+      }
+      const grant = JSON.parse(payload);
+      if (grant.operation !== "chat" || !Number.isSafeInteger(grant.expiresAt) || grant.expiresAt < Date.now() || grant.expiresAt > Date.now() + 65000) {
+        send(401, { error: "Chat authorization expired. Please retry." }); return;
+      }
+      if (jobs.size >= 4) { send(429, { error: "The agent is busy. Please retry shortly." }); return; }
+      const jobKey = `chat:${crypto.randomUUID()}`;
+      const running = runSpaceChat(manifestSchema.parse(grant.manifest), input.data.messages, apiKey);
+      jobs.set(jobKey, running.then(() => {}, () => {}));
+      try { send(200, await running); }
+      finally { jobs.delete(jobKey); }
+      return;
     }
     if (req.url !== "/invoke") {
       let json: unknown;
@@ -151,7 +171,21 @@ const server = createServer(async (req, res) => {
       runName: "agent.invoke",
     });
     send(200, agentResponseSchema.parse({ text: response.text }));
-  } catch {
+  } catch (error) {
+    if (req.url === "/chat") {
+      // Log diagnostic codes only: provider messages can contain prompt data.
+      const cause = error instanceof Error ? error.cause : undefined;
+      const detail = cause && typeof cause === "object" ? cause as { name?: string; code?: string; cause?: { code?: string }; $metadata?: { httpStatusCode?: number; requestId?: string } } : undefined;
+      console.error("Chat request failed", {
+        stage: error instanceof ChatServiceError ? error.stage : "request",
+        name: detail?.name ?? (error instanceof Error ? error.name : "UnknownError"),
+        code: detail?.code ?? detail?.cause?.code,
+        status: detail?.$metadata?.httpStatusCode,
+        requestId: detail?.$metadata?.requestId,
+      });
+      send(502, { error: error instanceof ChatServiceError ? error.message : "Chat request failed. Check the agent terminal for the failing stage." });
+      return;
+    }
     send(502, { error: "Bedrock request failed" });
   }
 });

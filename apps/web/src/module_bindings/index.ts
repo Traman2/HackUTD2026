@@ -50,6 +50,7 @@ import UpdateTicketStepReducer from "./update_ticket_step_reducer.ts";
 import * as AgentFlowchartStoreProcedure from "./agent_flowchart_store_procedure.ts";
 import * as AnalyzeSpaceRiskProcedure from "./analyze_space_risk_procedure.ts";
 import * as AskAgentProcedure from "./ask_agent_procedure.ts";
+import * as AuthorizeSpaceChatProcedure from "./authorize_space_chat_procedure.ts";
 import * as CleanupDocumentUploadProcedure from "./cleanup_document_upload_procedure.ts";
 import * as ConfirmDocumentUploadProcedure from "./confirm_document_upload_procedure.ts";
 import * as ConfirmTicketPhotoUploadProcedure from "./confirm_ticket_photo_upload_procedure.ts";
@@ -134,6 +135,7 @@ const proceduresSchema = __procedures(
   __procedureSchema("agent_flowchart_store", AgentFlowchartStoreProcedure.params, AgentFlowchartStoreProcedure.returnType),
   __procedureSchema("analyze_space_risk", AnalyzeSpaceRiskProcedure.params, AnalyzeSpaceRiskProcedure.returnType),
   __procedureSchema("ask_agent", AskAgentProcedure.params, AskAgentProcedure.returnType),
+  __procedureSchema("authorize_space_chat", AuthorizeSpaceChatProcedure.params, AuthorizeSpaceChatProcedure.returnType),
   __procedureSchema("cleanup_document_upload", CleanupDocumentUploadProcedure.params, CleanupDocumentUploadProcedure.returnType),
   __procedureSchema("confirm_document_upload", ConfirmDocumentUploadProcedure.params, ConfirmDocumentUploadProcedure.returnType),
   __procedureSchema("confirm_ticket_photo_upload", ConfirmTicketPhotoUploadProcedure.params, ConfirmTicketPhotoUploadProcedure.returnType),

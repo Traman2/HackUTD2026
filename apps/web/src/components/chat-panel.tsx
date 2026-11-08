@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Bot, LoaderCircle, MessageSquare, SendHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export type ChatMessage = { id: number; role: "user" | "assistant"; text: string };
 
@@ -39,7 +41,7 @@ export function ChatPanel({ messages, pending, onSend }: {
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <Bot aria-hidden="true" className="size-7 text-[#939188]" />
             <h3 className="text-sm font-semibold">Ask about this space</h3>
-            <p className="max-w-xs text-xs leading-5 text-[#78766e]">Questions you ask here will drive the charts generated on the right.</p>
+            <p className="max-w-xs text-xs leading-5 text-[#78766e]">Ask questions to explore evidence and generate views in the panel on the left.</p>
             <div className="mt-2 flex max-w-sm flex-wrap justify-center gap-2">
               {suggestions.map(text => (
                 <button key={text} type="button" onClick={() => send(text)} className="cursor-pointer rounded-full border border-[#e3e3e7] bg-white px-3 py-1 text-[11px] text-[#5f5d56] transition-colors hover:border-[#b7b5ae] hover:bg-[#faf9f6] focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">{text}</button>
@@ -50,9 +52,17 @@ export function ChatPanel({ messages, pending, onSend }: {
           <ul className="space-y-3">
             {messages.map(message => (
               <li key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <p className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs leading-5 ${message.role === "user" ? "bg-[#37352f] text-white" : "border border-[#e3e3e7] bg-[#faf9f6] text-[#37352f]"}`}>
-                  <span className="sr-only">{message.role === "user" ? "You: " : "Assistant: "}</span>{message.text}
-                </p>
+                <div className={`min-w-0 max-w-[85%] rounded-lg px-3 py-2 text-xs leading-5 ${message.role === "user" ? "whitespace-pre-wrap break-words bg-[#37352f] text-white" : "border border-[#e3e3e7] bg-[#faf9f6] text-[#37352f]"}`}>
+                  <span className="sr-only">{message.role === "user" ? "You: " : "Assistant: "}</span>
+                  {message.role === "user" ? message.text : (
+                    <div className="break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-2 [&_h1]:my-3 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:my-3 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:my-2 [&_h3]:font-semibold [&_h4]:my-2 [&_h4]:font-semibold [&_h5]:my-2 [&_h5]:font-semibold [&_h6]:my-2 [&_h6]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-[#d5d3cc] [&_blockquote]:pl-3 [&_blockquote]:text-[#78766e] [&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-[#eeede8] [&_pre]:p-3 [&_pre]:text-[11px] [&_code]:rounded [&_code]:bg-[#eeede8] [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[11px] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_a]:text-[#397b8b] [&_a]:underline [&_a]:underline-offset-2 [&_hr]:my-3 [&_th]:border [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_td]:border [&_td]:px-2 [&_td]:py-1">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={{
+                        a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                        table: ({ node: _node, ...props }) => <div className="my-2 overflow-x-auto"><table {...props} className="w-full border-collapse text-[11px]" /></div>,
+                      }}>{message.text}</ReactMarkdown>
+                    </div>
+                  )}
+                </div>
               </li>
             ))}
             {pending && (

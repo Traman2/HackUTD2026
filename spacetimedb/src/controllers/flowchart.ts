@@ -8,12 +8,12 @@ import { presignS3, storageConfig } from "../clients/s3";
 import { savedFlowchart, sourceFingerprint } from "./flowchart-storage";
 
 type Context = ProcedureCtx<InferSchema<typeof spacetimedb>>;
-export type AgentOperation = "get" | "generate" | "risk" | "tickets";
+export type AgentOperation = "get" | "generate" | "risk" | "tickets" | "chat";
 // Returns an owner-authorized, short-lived signed capability for the local agent.
 export function requestAgent(ctx: Context, spaceId: bigint, operation: AgentOperation) {
   const generate = operation === "generate";
   const snapshot = ctx.withTx(tx => {
-    const space = requireSpace(tx, spaceId, operation !== "get");
+    const space = requireSpace(tx, spaceId, operation !== "get" && operation !== "chat");
     const all = Array.from(tx.db.documents.spaceId.filter(spaceId));
     if (generate && all.some(doc => !doc.verifiedAt)) throw new SenderError("Finish or remove unverified document uploads before generating the flowchart.");
     return { space, documents: all.filter(doc => doc.verifiedAt).sort((a, b) => a.id < b.id ? -1 : 1) };
@@ -44,6 +44,7 @@ export function requestAgent(ctx: Context, spaceId: bigint, operation: AgentOper
 }
 
 export const generate_space_flowchart = spacetimedb.procedure({ spaceId: t.u64() }, t.string(), (ctx, { spaceId }) => requestAgent(ctx, spaceId, "generate"));
+export const authorize_space_chat = spacetimedb.procedure({ spaceId: t.u64() }, t.string(), (ctx, { spaceId }) => requestAgent(ctx, spaceId, "chat"));
 export const get_space_flowchart = spacetimedb.procedure({ spaceId: t.u64() }, t.string(), (ctx, { spaceId }) => ctx.withTx(tx => {
   requireSpace(tx, spaceId);
   return JSON.stringify(savedFlowchart(tx, spaceId));

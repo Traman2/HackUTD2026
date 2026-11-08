@@ -155,7 +155,7 @@ export default function SpaceDetails() {
                   <SpaceFlowchartView spaceKey={space.id.toString()} archived={space.archived} documentCount={documentsReady ? documents.length : null} flowchart={flowchart} selectedNodeId={nodeOpen ? selectedNodeId : null} onSelectNode={openNode} onPreview={openGraphSource} risk={risk} onOpenRisks={openRisks} />
                 </div>
                 <div aria-hidden={view !== "insights"} inert={view !== "insights"} className={`absolute inset-0 ${view === "insights" ? "" : "invisible"}`}>
-                  <SpaceInsightsView key={space.id.toString()} active={view === "insights"} />
+                  <SpaceInsightsView key={space.id.toString()} active={view === "insights"} spaceId={space.id} onPreview={openGraphSource} />
                 </div>
                 <div aria-hidden={view !== "tickets"} inert={view !== "tickets"} className={`absolute inset-0 ${view === "tickets" ? "" : "invisible"}`}>
                   <SpaceTicketsView key={space.id.toString()} tickets={tickets} hasFlowchart={!!graph?.nodes.length} flowchartBusy={flowchart.busy} archived={space.archived}

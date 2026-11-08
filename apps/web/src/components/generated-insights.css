@@ -1,0 +1,13 @@
+.insights-graph .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid #e8e6df;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px #37352f08;
+}
+.insights-graph .react-flow__controls-button {
+  border-color: #ecebe6;
+  background: white;
+  color: #78766e;
+}
+.insights-graph .react-flow__controls-button:hover { background: #f7f6f2; }
+.insights-graph .react-flow__handle { border-color: white; background: #7caaa9; }
