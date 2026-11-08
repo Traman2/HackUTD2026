@@ -6,15 +6,23 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
-import DeleteProfileReducer from "../delete_profile_reducer";
-import LoginReducer from "../login_reducer";
-import LogoutReducer from "../logout_reducer";
-import SaveProfileReducer from "../save_profile_reducer";
-import SignupReducer from "../signup_reducer";
+import CancelDocumentUploadReducer from "../cancel_document_upload_reducer.ts";
+import CreateSpaceReducer from "../create_space_reducer.ts";
+import DeleteProfileReducer from "../delete_profile_reducer.ts";
+import LoginReducer from "../login_reducer.ts";
+import LogoutReducer from "../logout_reducer.ts";
+import SaveProfileReducer from "../save_profile_reducer.ts";
+import SetSpaceArchivedReducer from "../set_space_archived_reducer.ts";
+import SignupReducer from "../signup_reducer.ts";
+import UpdateSpaceReducer from "../update_space_reducer.ts";
 
+export type CancelDocumentUploadParams = __Infer<typeof CancelDocumentUploadReducer>;
+export type CreateSpaceParams = __Infer<typeof CreateSpaceReducer>;
 export type DeleteProfileParams = __Infer<typeof DeleteProfileReducer>;
 export type LoginParams = __Infer<typeof LoginReducer>;
 export type LogoutParams = __Infer<typeof LogoutReducer>;
 export type SaveProfileParams = __Infer<typeof SaveProfileReducer>;
+export type SetSpaceArchivedParams = __Infer<typeof SetSpaceArchivedReducer>;
 export type SignupParams = __Infer<typeof SignupReducer>;
+export type UpdateSpaceParams = __Infer<typeof UpdateSpaceReducer>;
 

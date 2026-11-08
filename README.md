@@ -46,6 +46,9 @@ SpacetimeDB's token identifies the caller/connection, while the sessions table d
 
 ## Checks
 
+For owner-scoped spaces, private PDF uploads, AWS bucket/IAM setup, and run
+commands, see [spacetimedb/STORAGE.md](spacetimedb/STORAGE.md).
+
 ```powershell
 pnpm typecheck:spacetime
 pnpm build:spacetime

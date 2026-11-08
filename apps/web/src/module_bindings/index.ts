@@ -34,22 +34,40 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
-import DeleteProfileReducer from "./delete_profile_reducer";
-import LoginReducer from "./login_reducer";
-import LogoutReducer from "./logout_reducer";
-import SaveProfileReducer from "./save_profile_reducer";
-import SignupReducer from "./signup_reducer";
+import CancelDocumentUploadReducer from "./cancel_document_upload_reducer.ts";
+import CreateSpaceReducer from "./create_space_reducer.ts";
+import DeleteProfileReducer from "./delete_profile_reducer.ts";
+import LoginReducer from "./login_reducer.ts";
+import LogoutReducer from "./logout_reducer.ts";
+import SaveProfileReducer from "./save_profile_reducer.ts";
+import SetSpaceArchivedReducer from "./set_space_archived_reducer.ts";
+import SignupReducer from "./signup_reducer.ts";
+import UpdateSpaceReducer from "./update_space_reducer.ts";
 
 // Import all procedure arg schemas
-import * as AskAgentProcedure from "./ask_agent_procedure";
+import * as AskAgentProcedure from "./ask_agent_procedure.ts";
+import * as CleanupDocumentUploadProcedure from "./cleanup_document_upload_procedure.ts";
+import * as ConfirmDocumentUploadProcedure from "./confirm_document_upload_procedure.ts";
+import * as RequestDocumentDownloadProcedure from "./request_document_download_procedure.ts";
+import * as RequestDocumentUploadProcedure from "./request_document_upload_procedure.ts";
+import * as RetryDocumentUploadProcedure from "./retry_document_upload_procedure.ts";
 
 // Import all table schema definitions
-import MyProfileRow from "./my_profile_table";
+import MyDocumentsRow from "./my_documents_table.ts";
+import MyProfileRow from "./my_profile_table.ts";
+import MySpacesRow from "./my_spaces_table.ts";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  myDocuments: __table({
+    name: 'my_documents',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyDocumentsRow),
   myProfile: __table({
     name: 'my_profile',
     indexes: [
@@ -57,26 +75,46 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MyProfileRow),
+  mySpaces: __table({
+    name: 'my_spaces',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MySpacesRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("cancel_document_upload", CancelDocumentUploadReducer),
+  __reducerSchema("create_space", CreateSpaceReducer),
   __reducerSchema("delete_profile", DeleteProfileReducer),
   __reducerSchema("login", LoginReducer),
   __reducerSchema("logout", LogoutReducer),
   __reducerSchema("save_profile", SaveProfileReducer),
+  __reducerSchema("set_space_archived", SetSpaceArchivedReducer),
   __reducerSchema("signup", SignupReducer),
+  __reducerSchema("update_space", UpdateSpaceReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
   __procedureSchema("ask_agent", AskAgentProcedure.params, AskAgentProcedure.returnType),
+  __procedureSchema("cleanup_document_upload", CleanupDocumentUploadProcedure.params, CleanupDocumentUploadProcedure.returnType),
+  __procedureSchema("confirm_document_upload", ConfirmDocumentUploadProcedure.params, ConfirmDocumentUploadProcedure.returnType),
+  __procedureSchema("request_document_download", RequestDocumentDownloadProcedure.params, RequestDocumentDownloadProcedure.returnType),
+  __procedureSchema("request_document_upload", RequestDocumentUploadProcedure.params, RequestDocumentUploadProcedure.returnType),
+  __procedureSchema("retry_document_upload", RetryDocumentUploadProcedure.params, RetryDocumentUploadProcedure.returnType),
 );
 
 type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "tables"> & {
   tables: typeof tablesSchema.schemaType.tables & {
+    /** @deprecated Use `myDocuments` instead. This alias will be removed in the next major version. */
+    readonly "my_documents": Omit<typeof tablesSchema.schemaType.tables["myDocuments"], "accessorName"> & { readonly accessorName: "my_documents" };
     /** @deprecated Use `myProfile` instead. This alias will be removed in the next major version. */
     readonly "my_profile": Omit<typeof tablesSchema.schemaType.tables["myProfile"], "accessorName"> & { readonly accessorName: "my_profile" };
+    /** @deprecated Use `mySpaces` instead. This alias will be removed in the next major version. */
+    readonly "my_spaces": Omit<typeof tablesSchema.schemaType.tables["mySpaces"], "accessorName"> & { readonly accessorName: "my_spaces" };
   };
 };
 
@@ -95,7 +133,9 @@ const REMOTE_MODULE = {
 >;
 
 const tableAccessorAliases = {
+  "my_documents": "myDocuments",
   "my_profile": "myProfile",
+  "my_spaces": "mySpaces",
 } as const;
 
 function __withTableAccessorAliases<T extends object>(target: T, freeze = false): T {
@@ -116,14 +156,22 @@ function __withTableAccessorAliases<T extends object>(target: T, freeze = false)
 
 type __DbViewBase = __DbConnectionImpl<typeof REMOTE_MODULE>["db"];
 export type DbView = __DbViewBase & {
+  /** @deprecated Use `myDocuments` instead. This alias will be removed in the next major version. */
+  readonly "my_documents": __DbViewBase["myDocuments"];
   /** @deprecated Use `myProfile` instead. This alias will be removed in the next major version. */
   readonly "my_profile": __DbViewBase["myProfile"];
+  /** @deprecated Use `mySpaces` instead. This alias will be removed in the next major version. */
+  readonly "my_spaces": __DbViewBase["mySpaces"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
 export type Tables = __TablesBase & {
+  /** @deprecated Use `myDocuments` instead. This alias will be removed in the next major version. */
+  readonly "my_documents": __TablesBase["myDocuments"];
   /** @deprecated Use `myProfile` instead. This alias will be removed in the next major version. */
   readonly "my_profile": __TablesBase["myProfile"];
+  /** @deprecated Use `mySpaces` instead. This alias will be removed in the next major version. */
+  readonly "my_spaces": __TablesBase["mySpaces"];
 };
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */

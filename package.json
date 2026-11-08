@@ -8,10 +8,10 @@
     "dev:web": "pnpm --dir apps/web dev",
     "dev:spacetime": "spacetime dev",
     "start:spacetime": "spacetime start --listen-addr 127.0.0.1:3000 --data-dir .spacetime-data --non-interactive",
-    "publish:spacetime": "spacetime publish hackutd2026 --server local --module-path ./spacetimedb",
+    "publish:spacetime": "pnpm --dir spacetimedb run publish",
     "build:web": "pnpm --dir apps/web build",
     "build:spacetime": "spacetime build --module-path ./spacetimedb",
-    "generate:spacetime": "spacetime generate --lang typescript --module-path ./spacetimedb --out-dir ./apps/web/src/module_bindings",
+    "generate:spacetime": "spacetime generate --lang typescript --import-extension ts --module-path ./spacetimedb --out-dir ./apps/web/src/module_bindings",
     "typecheck:spacetime": "pnpm --dir spacetimedb exec tsc"
   },
   "keywords": [],

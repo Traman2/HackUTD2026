@@ -29,3 +29,4 @@ build/
 spacetime.local.json
 spacetime.*.local.json
 .spacetime-data/
+module_bindings

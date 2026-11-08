@@ -6,7 +6,8 @@
   "scripts": {
     "dev:agent": "node --env-file-if-exists=.env src/agents/server.ts",
     "build": "spacetime build",
-    "publish": "spacetime publish"
+    "publish": "node --env-file-if-exists=.env -e \"const p=require('node:path').join(process.env.LOCALAPPDATA||'','SpacetimeDB','spacetime.exe');const r=require('node:child_process').spawnSync(require('node:fs').existsSync(p)?p:'spacetime',['publish',process.env.SPACETIMEDB_DB_NAME||'hackutd2026','--server',process.env.SPACETIMEDB_SERVER||'local','--module-path','.'],{stdio:'inherit',env:process.env});if(r.error)throw r.error;process.exitCode=r.status??1\"",
+    "publish:storage": "pnpm run publish"
   },
   "keywords": [],
   "author": "",
@@ -14,11 +15,16 @@
   "dependencies": {
     "@langchain/aws": "^1.5.2",
     "@langchain/core": "^1.3.5",
+    "@noble/hashes": "^2.4.0",
     "spacetimedb": "2.14.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1164.0",
+    "@aws-sdk/s3-request-presigner": "^3.1164.0",
+    "@smithy/hash-node": "^4.5.2",
     "@types/node": "^24.19.2",
-    "typescript": "~5.6.2"
+    "typescript": "~5.6.2",
+    "vitest": "^5.1.0"
   }
 }

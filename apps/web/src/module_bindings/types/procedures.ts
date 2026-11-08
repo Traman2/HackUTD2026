@@ -6,8 +6,23 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
-import * as AskAgentProcedure from "../ask_agent_procedure";
+import * as AskAgentProcedure from "../ask_agent_procedure.ts";
+import * as CleanupDocumentUploadProcedure from "../cleanup_document_upload_procedure.ts";
+import * as ConfirmDocumentUploadProcedure from "../confirm_document_upload_procedure.ts";
+import * as RequestDocumentDownloadProcedure from "../request_document_download_procedure.ts";
+import * as RequestDocumentUploadProcedure from "../request_document_upload_procedure.ts";
+import * as RetryDocumentUploadProcedure from "../retry_document_upload_procedure.ts";
 
 export type AskAgentArgs = __Infer<typeof AskAgentProcedure.params>;
 export type AskAgentResult = __Infer<typeof AskAgentProcedure.returnType>;
+export type CleanupDocumentUploadArgs = __Infer<typeof CleanupDocumentUploadProcedure.params>;
+export type CleanupDocumentUploadResult = __Infer<typeof CleanupDocumentUploadProcedure.returnType>;
+export type ConfirmDocumentUploadArgs = __Infer<typeof ConfirmDocumentUploadProcedure.params>;
+export type ConfirmDocumentUploadResult = __Infer<typeof ConfirmDocumentUploadProcedure.returnType>;
+export type RequestDocumentDownloadArgs = __Infer<typeof RequestDocumentDownloadProcedure.params>;
+export type RequestDocumentDownloadResult = __Infer<typeof RequestDocumentDownloadProcedure.returnType>;
+export type RequestDocumentUploadArgs = __Infer<typeof RequestDocumentUploadProcedure.params>;
+export type RequestDocumentUploadResult = __Infer<typeof RequestDocumentUploadProcedure.returnType>;
+export type RetryDocumentUploadArgs = __Infer<typeof RetryDocumentUploadProcedure.params>;
+export type RetryDocumentUploadResult = __Infer<typeof RetryDocumentUploadProcedure.returnType>;
 

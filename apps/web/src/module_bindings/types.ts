@@ -10,14 +10,110 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const DocumentArtifacts = __t.object("DocumentArtifacts", {
+  id: __t.u64(),
+  documentId: __t.u64(),
+  kind: __t.string(),
+  storageKey: __t.string(),
+  extractionVersion: __t.u32(),
+  createdAt: __t.timestamp(),
+});
+export type DocumentArtifacts = __Infer<typeof DocumentArtifacts>;
+
+export const DocumentSummary = __t.object("DocumentSummary", {
+  id: __t.u64(),
+  spaceId: __t.u64(),
+  uploadedBy: __t.string(),
+  filename: __t.string(),
+  mimeType: __t.string(),
+  sizeBytes: __t.u32(),
+  checksumSha256: __t.string(),
+  category: __t.string(),
+  visibility: __t.string(),
+  status: __t.string(),
+  extractionVersion: __t.u32(),
+  error: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  verifiedAt: __t.option(__t.timestamp()),
+});
+export type DocumentSummary = __Infer<typeof DocumentSummary>;
+
+export const Documents = __t.object("Documents", {
+  id: __t.u64(),
+  spaceId: __t.u64(),
+  uploadedBy: __t.string(),
+  filename: __t.string(),
+  mimeType: __t.string(),
+  sizeBytes: __t.u32(),
+  checksumSha256: __t.string(),
+  category: __t.string(),
+  visibility: __t.string(),
+  storageKey: __t.string(),
+  storageBucket: __t.string(),
+  storageRegion: __t.string(),
+  storageVersionId: __t.option(__t.string()),
+  status: __t.string(),
+  extractionVersion: __t.u32(),
+  error: __t.option(__t.string()),
+  createdAt: __t.timestamp(),
+  verifiedAt: __t.option(__t.timestamp()),
+});
+export type Documents = __Infer<typeof Documents>;
+
+export const MyDocuments = __t.object("MyDocuments", {});
+export type MyDocuments = __Infer<typeof MyDocuments>;
+
 export const MyProfile = __t.object("MyProfile", {});
 export type MyProfile = __Infer<typeof MyProfile>;
+
+export const MySpaces = __t.object("MySpaces", {});
+export type MySpaces = __Infer<typeof MySpaces>;
+
+export const PdfUploadTicket = __t.object("PdfUploadTicket", {
+  documentId: __t.u64(),
+  url: __t.string(),
+  expiresAt: __t.timestamp(),
+  contentType: __t.string(),
+  checksumSha256: __t.string(),
+});
+export type PdfUploadTicket = __Infer<typeof PdfUploadTicket>;
 
 export const Sessions = __t.object("Sessions", {
   identity: __t.identity(),
   username: __t.string(),
 });
 export type Sessions = __Infer<typeof Sessions>;
+
+export const SpaceSummary = __t.object("SpaceSummary", {
+  id: __t.u64(),
+  ownerUsername: __t.string(),
+  name: __t.string(),
+  description: __t.string(),
+  archived: __t.bool(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type SpaceSummary = __Infer<typeof SpaceSummary>;
+
+export const Spaces = __t.object("Spaces", {
+  id: __t.u64(),
+  ownerUsername: __t.string(),
+  name: __t.string(),
+  description: __t.string(),
+  archived: __t.bool(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type Spaces = __Infer<typeof Spaces>;
+
+export const Uploads = __t.object("Uploads", {
+  documentId: __t.u64(),
+  requestedBy: __t.string(),
+  attempt: __t.u32(),
+  status: __t.string(),
+  expiresAt: __t.timestamp(),
+});
+export type Uploads = __Infer<typeof Uploads>;
 
 export const UserProfile = __t.object("UserProfile", {
   username: __t.string(),

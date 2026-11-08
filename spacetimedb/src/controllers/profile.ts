@@ -20,6 +20,9 @@ export const save_profile = spacetimedb.reducer(
 export const delete_profile = spacetimedb.reducer((ctx) => {
   const session = ctx.db.sessions.identity.find(ctx.sender);
   if (!session) throw new SenderError("Log in first.");
+  if (Array.from(ctx.db.spaces.ownerUsername.filter(session.username)).length > 0) {
+    throw new SenderError("Accounts that own spaces cannot be deleted yet.");
+  }
   // Revoke every login for this account, including other devices.
   for (const login of Array.from(
     ctx.db.sessions.username.filter(session.username),
