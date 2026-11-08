@@ -39,10 +39,12 @@ export class SpacetimeGraphStore {
   async get(_manifest: GraphManifest): Promise<GraphResult> { return graphResultSchema.parse(await this.call("get")); }
   async begin(_manifest: GraphManifest): Promise<boolean> { return (await this.call("begin", { fingerprint: this.manifest.fingerprint })).started === true; }
   async heartbeat() { await this.call("heartbeat"); }
+  async getDocumentMetadata(data: Record<string, unknown>): Promise<unknown> { return this.call("metadataGet", data); }
+  async saveDocumentMetadata(data: Record<string, unknown>) { await this.call("metadataSave", data); }
   async stage(_manifest: GraphManifest, stage: string) { await this.call("stage", { stage }); }
   async fail(_manifest: GraphManifest, error: string) { await this.call("fail", { error }); }
-  async getPageFindings(cacheKey: string): Promise<unknown> { return this.call("cacheGet", { cacheKey }); }
-  async savePageFindings(cacheKey: string, findings: unknown) { await this.call("cacheSave", { cacheKey, findings }); }
+  async getCachedResult(cacheKey: string): Promise<unknown> { return this.call("cacheGet", { cacheKey }); }
+  async saveCachedResult(cacheKey: string, findings: unknown) { await this.call("cacheSave", { cacheKey, findings }); }
   async save(_manifest: GraphManifest, graph: SpaceGraph, documents: GraphResult["documents"]) { await this.call("save", { graph, documents }); }
   async checkpoint(graph: SpaceGraph, documents: GraphResult["documents"], stage: string) { await this.call("checkpoint", { graph, documents, stage }); }
 }

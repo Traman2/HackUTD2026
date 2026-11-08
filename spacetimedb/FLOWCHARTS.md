@@ -1,127 +1,147 @@
-﻿# Space document flowcharts
+# Document metadata and relationship overview
 
-The first sidebar button starts a background Deep Agents job for a space.
-SpacetimeDB is the authoritative store for source metadata, generation progress,
-completed graphs, and cached page findings. S3 stores only the source PDF bytes.
+The first sidebar action starts an owner-scoped background LangGraph workflow.
+It extracts reusable document metadata first, then creates a small relationship
+overview for React Flow. S3 contains originals; both logical data stores are
+separate private tables in SpacetimeDB. No SQLite or second database service is
+required.
 
-## SpacetimeDB models
+## Workflow
 
-`src/models/flowchart.ts` defines two private models:
+```mermaid
+flowchart TD
+  START --> load_cached_metadata
+  load_cached_metadata -->|Missing or changed PDFs| download_missing_sources
+  download_missing_sources --> extract_documents
+  extract_documents --> build_relationship_candidates
+  load_cached_metadata -->|All metadata cached| build_relationship_candidates
+  build_relationship_candidates --> select_relationship_overview
+  select_relationship_overview --> save_flowchart --> END
+  subgraph Document workflow - two at a time
+    prepare_pdf --> extract_metadata_and_facts
+    extract_metadata_and_facts -->|More bounded sections| extract_metadata_and_facts
+    extract_metadata_and_facts -->|Done| save_document_metadata
+  end
+```
 
-- `flowcharts`: keyed by `spaceId`. Stores the owner, typed `nodes` and `edges`
-  arrays with source evidence, document inventory, generation status, progress,
-  error, source fingerprints, generation timestamp, and job lease.
-- `flowchart_page_findings`: successful page-batch analyses, keyed by a digest
-  of deployment, owner, space, document checksum, model, prompt, page batch,
-  and analysis version. Findings are reused on matching retries.
+`flowchart-state.ts` uses `Annotation.Root` for the workflow's analyses, missing
+documents and relationship graph, plus a document subgraph's section cursor,
+extracted parts and result. Raw PDFs, signed URLs and page images remain runtime
+resources, outside accumulated state and final overview prompts.
 
-The entire finished graph is replaced in one SpacetimeDB transaction. Node IDs,
-edge endpoints, and document/page references are validated before saving.
-A failed regeneration retains the last successful graph. Changed documents mark
-an existing result outdated. No separate database service or local database file
-is used by the agent.
+This is a predictable extraction workflow, so it uses LangChain
+`ChatBedrockConverse.withStructuredOutput` inside LangGraph nodes rather than
+an autonomous Deep Agent tool loop. A normal short PDF needs one model call for
+classification, summary, entities and relationships together. Two document
+workflows run concurrently. There is one final overview call across compact
+facts. Neither planning nor filesystem/delegation tools are exposed to the model.
+The configured `BEDROCK_MODEL_ID` is used throughout.
 
-## Authorization and transport
+## Document extraction
 
-`generateSpaceFlowchart` checks ownership and verified uploads, then returns a
-60-second HMAC-signed capability for that space and source snapshot. The browser
-relays it through `/api/flowchart/dispatch`. Vite proxies that exact path to the
-local agent, which verifies the ticket before beginning the job. This avoids
-SpacetimeDB's restriction on database-initiated HTTP requests to localhost.
+`extract-document.ts` reads every PDF page. Each section contains at most eight
+pages, 28,000 text characters and three visual inputs. Larger pages are split
+without losing their original page number. Scanned pages and pages identified
+as topology/continuity/route diagrams receive a rendered image; normal narrative
+and chart/table pages use extracted text. Every page contributes text. This
+heuristic is tuned to the current synthetic PDFs; PDFs with unlabeled visual-only
+relationships embedded in otherwise text-rich pages may need broader rendering.
 
-The Node agent uses the SpacetimeDB SDK and `agentFlowchartStore` to persist
-progress, cached findings, failures, and results. Each service request is signed
-with the backend-only `AGENT_API_KEY`, bound to a space, owner, deployment,
-operation, expiry, and job ID. Service requests use a different signed payload
-shape from browser capabilities. The model never receives signing credentials.
+The synthetic set has eight short PDFs whose complete text fits into one section
+each. The ordinary uncached path therefore uses eight extraction calls and one
+overview call, rather than separate graph and summary calls on every page. This
+is a call-count expectation, not a measured latency claim. One schema repair is
+allowed on invalid extraction data; provider transient retries may add requests.
 
-`getSpaceFlowchart` reads directly from SpacetimeDB after checking the caller's
-ownership. Saved charts and progress can therefore be loaded without the agent
-running. The frontend polls while a job is processing. The agent renews a
-2-minute job lease every 30 seconds. An expired job is reported as interrupted,
-so another generation can start. Job IDs prevent an obsolete worker overwriting
-newer results. Two jobs may run concurrently in each agent process; the database
-also prevents concurrent jobs for the same space.
+Extraction keeps major assets, services, premises, parties and contracts, with
+exact asset identifiers, explicit aliases, original-page evidence and a concise
+description. Numeric readings, ticket states and dates belong in details rather
+than separate graph nodes. The schema distinguishes measured conditions, vendor
+claims, historical states and unresolved acceptance in the extraction prompt.
+An invalid source page citation is discarded. An unavailable or corrupt source
+fails explicitly; completed documents and the latest preview remain stored.
 
-## Document analysis and rendering
+## Separate data stores
 
-The agent downloads every original using a short-lived S3 URL and verifies its
-stored size and SHA-256 checksum. Each uncached PDF page is rendered with its
-extracted text and passed to a Deep Agent. The model returns nodes and edges
-directly; it does not return or choose document/page numbers. Application code
-attaches the correct source identity and validates edge endpoints.
+- `document_metadata`: one record per source document. Includes document/space
+  IDs, filename, title, type, summary, complete extracted facts JSON, page count,
+  model and pipeline versions, checksum, bucket, object key and object version.
+  Storage identity comes from the verified source record, never the model.
+- `flowcharts`: one record per space. Includes typed node/edge arrays, citations,
+  source inventory, generation state/stage/error, timestamps, fingerprint and job
+  lease. This stores the selected visualization rather than every extracted fact.
+- `flowchart_page_findings`: legacy-named private cache now reused for the final
+  overview. Its key includes the corpus fingerprint, model, pipeline, prompt and
+  extracted facts. It no longer stores new per-page agent reports.
 
-The application merges each page update into the accumulated graph, assigns
-stable IDs, reuses explicit existing catalogue IDs, deduplicates relationships,
-and writes a processing checkpoint to SpacetimeDB after every completed page.
-The frontend polls and renders these checkpoints while later pages are analyzed.
-There is no final all-document synthesis call or page-report coverage check.
-Only completing the whole traversal changes the status to ready. Failed jobs
-retain the last checkpoint and are shown as incomplete. Each node or edge keeps
-up to eight distinct page references for a bounded evidence display.
+The legacy `document_analyses` table is retained without new writes so earlier
+summaries are not deleted. New work reads/writes `document_metadata` exclusively.
 
-Successful page graph updates are cached under a key that also includes the
-existing component catalogue, preventing reuse against incompatible node IDs.
-Retries reconstruct the graph in page order and reuse compatible page updates.
-The page agent can use the bounded read_source_page tool. Broad filesystem,
-planning, and delegation tools stay hidden, and automatic prompt-cache markers
-remain disabled. The agent uses the current BEDROCK_MODEL_ID, standard LangChain
-Zod/toolStrategy output definitions, and an 8,192-token per-page output allowance.
-The current integration uses tool-based results, not native schema-enforced
-output. Each page has at most six model steps. Application-side Zod validation
-and source/endpoint checks run before every checkpoint and final save.
+Metadata reuse checks document checksum, object key/version, model and pipeline
+version. A changed PDF invalidates only its own extraction. Matching metadata
+avoids downloading or re-extracting that PDF; a matching overview avoids the final
+model call too. Results checkpoint after each completed PDF. Checkpoint writes
+are serialized so concurrent document completions cannot overwrite newer previews.
 
-React Flow renders white component cards, category accents, dotted curved arrows,
-and a dotted canvas inspired by `apps/web/sample-ui/react-flow-example.png`.
-Dagre calculates a left-to-right layout. Zoom, pan, fit-to-view, keyboard focus,
-and node dragging are supported. Source chips open private PDF previews at the
-cited page. Dragged positions and viewport zoom are not persisted.
+## Graph assembly and rendering
 
-## Configuration and startup
+`relationship-graph.ts` joins exact asset IDs and supported names/aliases, ignoring
+corporate suffix differences. Separately tagged assets do not merge because
+their generic descriptions match. Relationship endpoints resolve only to declared
+document entities, and dangling/self-referencing edges are skipped. Duplicate
+relationships combine citations; different relationship meanings remain distinct.
 
-Use Node.js 24+ and the pnpm workspace dependencies. Configure `spacetimedb/.env`:
+The final model receives at most 60 candidate nodes, 120 edges and bounded source
+summaries, never raw PDFs. It selects groups of the same entity and existing edge
+numbers, aiming for 18-24 nodes and at most 36 edges across the corpus. These are
+an overview target and upper bounds, not a minimum quota. Unselected facts remain
+in document metadata. Application code remaps IDs and citations and rejects
+missing references; the model cannot introduce a new relationship at this step.
+If selection fails, a deterministic ranked overview is saved instead. There are
+no repeated category-condensation model passes or per-page node quotas.
 
-- Existing S3 settings configure the database's signer.
-- `AGENT_API_KEY` must match in the published database environment and the agent.
-- `SPACETIMEDB_HOST=http://127.0.0.1:3000` and
-  `SPACETIMEDB_DB_NAME=hackutd2026` identify the agent's database connection.
-- `GRAPH_NAMESPACE=hackutd2026` identifies this deployment in signed requests
-  and analysis cache keys. Publish it with the module.
-- `AWS_REGION` and `BEDROCK_MODEL_ID` select the Bedrock model; the default is
-  selected in that file. AWS credentials use the SDK credential chain.
-- `AGENT_PORT` defaults to 3001. Update the Vite proxy if changing this port.
-- `LANGSMITH_TRACING`, `LANGSMITH_ENDPOINT`, `LANGSMITH_API_KEY`,
-  `LANGSMITH_AGENT_ID`, and `LANGSMITH_AGENT_ENVIRONMENT` configure tracing.
-  The agent loads these before importing LangChain. Tool calls, stage names,
-  and space/document IDs are included in traces.
+Each node shows type, title, full scrollable details and source-document chips
+that open authorized PDF previews. Up to eight source-page citations are retained,
+preferring distinct documents first. Cards use fixed dimensions and a Dagre
+left-to-right layout. React Flow supports zoom, pan, fit and dragging. Node data
+updates without remounting the canvas; topology changes trigger layout updates.
+Canvas zoom and manual positions are not persisted across page reloads.
 
-From the repository root, in separate terminals as appropriate:
+## Authorization, tracing and limits
+
+`generateSpaceFlowchart` checks space ownership and verified uploads, then returns
+a 60-second HMAC-signed dispatch capability. Vite proxies `/api/flowchart/dispatch`
+to the local agent. The agent validates the capability and uses HMAC-authenticated
+`agentFlowchartStore` SDK calls, bound to owner, space, namespace, job and expiry.
+`getSpaceFlowchart` reads SpacetimeDB directly, so saved graphs do not depend on
+the agent being online. Two jobs may run concurrently; each runs up to two document
+extractions. A heartbeat renews each two-minute database lease every 30 seconds.
+
+Source limits: 100 PDFs, 20 MiB each, 100 MiB total and 200 total pages. A section
+returns at most 20 entities/28 relationships; a document retains up to 200/400.
+Each model invocation has a 90-second timeout; the whole job has 20 minutes.
+The stored overview stays below the existing 100-node/200-edge storage limits.
+
+`start.ts` loads ignored `.env` before importing LangChain. LangSmith traces show
+`space-flowchart.workflow`, `space-documents.document-workflow`,
+`space-documents.extract-metadata`, and `space-flowchart.select-overview`, with
+document/space IDs. Credentials and signed URLs never enter model prompts.
+
+Configure `AWS_REGION`, `BEDROCK_MODEL_ID`, AWS credentials, `AGENT_API_KEY`,
+`SPACETIMEDB_HOST`, `SPACETIMEDB_DB_NAME`, `GRAPH_NAMESPACE`, existing S3 settings
+and `LANGSMITH_*` in the backend environment. From the repository root:
 
 ```powershell
-pnpm install
 pnpm start:spacetime
 pnpm publish:spacetime
 pnpm dev:agent
 pnpm dev:web
 ```
 
-In production, proxy only `/api/flowchart/dispatch` to the private agent's
-`/flowchart/dispatch` endpoint. Keep shared keys out of frontend/Vite variables.
-`AGENT_URL` belongs to the older generic agent invocation procedure, not the
-flowchart persistence path.
-
-## Limits
-
-Generation supports at most 100 documents, 100 MiB of source PDFs, 200 pages,
-100 nodes, and 200 edges in the accumulated graph. Extracted text is
-limited to 60,000 characters per page, and the overall job has a 20-minute
-deadline. Oversized, encrypted, corrupt, or unavailable documents fail explicitly
-instead of producing a chart from a silently incomplete corpus. Finish or clean
-up unverified uploads before generating.
-
 ## References
 
-- [Deep Agents multimodal input](https://docs.langchain.com/oss/javascript/deepagents/multimodal)
-- [LangChain tools](https://docs.langchain.com/oss/javascript/langchain/tools)
-- [Nova tool troubleshooting](https://docs.aws.amazon.com/nova/latest/userguide/tools-troubleshooting.html)
+- [LangChain custom workflows](https://docs.langchain.com/oss/javascript/langchain/multi-agent/custom-workflow)
+- [Bedrock Converse integration](https://docs.langchain.com/oss/javascript/integrations/chat/bedrock_converse)
+- [LangGraph state](https://docs.langchain.com/oss/javascript/langgraph/graph-api-state)
+- [LangGraph control flow](https://docs.langchain.com/oss/javascript/langgraph/graph-api-control-flow)
 - [React Flow Dagre layout](https://reactflow.dev/examples/layout/dagre)

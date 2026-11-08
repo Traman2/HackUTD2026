@@ -10,7 +10,7 @@ export const graphSchema = z.object({
   nodes: z.array(z.object({
     id,
     label: z.string().min(1).max(100),
-    category: z.enum(["property", "utility", "contract", "party", "financial", "obligation", "other"]),
+    category: z.enum(["property", "utility", "contract", "party", "financial", "obligation", "equipment", "cooling", "power", "network", "controls", "safety", "other"]),
     description: z.string().min(1).max(400),
     evidence: z.array(evidenceSchema).min(1).max(8),
   })).max(100),
@@ -23,6 +23,11 @@ export const graphSchema = z.object({
   })).max(200),
 });
 export type SpaceGraph = z.infer<typeof graphSchema>;
+
+export function withoutDanglingEdges<T extends { nodes: { id: string }[]; edges: { source: string; target: string }[] }>(graph: T): T {
+  const ids = new Set(graph.nodes.map(node => node.id));
+  return { ...graph, edges: graph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) && edge.source !== edge.target) };
+}
 
 export const manifestSchema = z.object({
   namespace: z.string().min(1).max(200),

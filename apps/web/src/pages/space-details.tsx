@@ -178,7 +178,7 @@ export default function SpaceDetails() {
               </div>}
               <div className="min-h-0 flex-1">
                 {flowchart.result?.graph && flowchart.result.graph.nodes.length > 0 ? (
-                  <Suspense fallback={<p role="status" className="p-4 text-xs text-[#78766e]">Loading flowchart...</p>}><SpaceFlowchart key={`${flowchart.result.generatedAt}:${flowchart.result.status}`} graph={flowchart.result.graph} documents={flowchart.result.documents} onPreview={openGraphSource} status={flowchart.result.status} /></Suspense>
+                  <Suspense fallback={<p role="status" className="p-4 text-xs text-[#78766e]">Loading flowchart...</p>}><SpaceFlowchart key={space.id.toString()} graph={flowchart.result.graph} documents={flowchart.result.documents} onPreview={openGraphSource} status={flowchart.result.status} /></Suspense>
                 ) : (
                   <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 px-6 text-center">
                     {flowchart.busy || flowchart.loading ? <>

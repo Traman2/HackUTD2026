@@ -5,7 +5,8 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { z } from "zod";
 import spacetimedb from "../schema";
-import { graphResultSchema, graphSchema, validateGraph } from "../validation/flowchart";
+import { graphResultSchema, graphSchema, validateGraph, withoutDanglingEdges } from "../validation/flowchart";
+import { documentFactsSchema } from "../validation/document-facts";
 
 type Tx = TransactionCtx<InferSchema<typeof spacetimedb>>;
 export function sourceFingerprint(documents: { id: bigint; checksumSha256: string; storageVersionId?: string; storageKey: string }[]) {
@@ -21,14 +22,14 @@ export function savedFlowchart(tx: Tx, spaceId: bigint) {
   const documents = Array.from(tx.db.documents.spaceId.filter(spaceId)).filter(doc => doc.verifiedAt);
   return graphResultSchema.parse({ status: row.status, stale: !!row.generatedAt && row.fingerprint !== sourceFingerprint(documents),
     stage: row.stage, error: row.error ?? null, generatedAt: row.generatedAt?.toDate().toISOString() ?? null,
-    graph: row.generatedAt ? { nodes: row.nodes, edges: row.edges } : null, documents: row.documents,
+    graph: row.generatedAt ? withoutDanglingEdges({ nodes: row.nodes, edges: row.edges }) : null, documents: row.documents,
   });
 }
 
 const serviceRequest = z.object({
   audience: z.literal("flowchart-store"), namespace: z.string(), owner: z.string(), spaceId: z.string().regex(/^[1-9]\d*$/),
   jobId: z.string().uuid(), expiresAt: z.number().int(),
-  operation: z.enum(["get", "begin", "stage", "heartbeat", "fail", "save", "checkpoint", "cacheGet", "cacheSave"]),
+  operation: z.enum(["get", "begin", "stage", "heartbeat", "fail", "save", "checkpoint", "cacheGet", "cacheSave", "metadataGet", "metadataSave"]),
   data: z.record(z.string(), z.unknown()),
 });
 
@@ -66,6 +67,32 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
       return JSON.stringify({ started: true });
     }
     if (!row || row.jobId !== jobId || row.status !== "processing") throw new SenderError("This generation job is no longer active.");
+    if (operation === "metadataGet" || operation === "metadataSave") {
+      const input = z.object({ documentId: z.string().regex(/^[1-9]\d*$/), checksumSha256: z.string(),
+        pipelineVersion: z.string().min(1).max(100), modelId: z.string().min(1).max(200),
+      }).parse(data);
+      const source = tx.db.documents.id.find(BigInt(input.documentId));
+      if (!source || source.spaceId !== spaceId || !source.verifiedAt || source.checksumSha256 !== input.checksumSha256) throw new SenderError("Invalid document metadata source.");
+      const existing = tx.db.documentMetadata.documentId.find(source.id);
+      if (operation === "metadataGet") {
+        return existing && existing.checksumSha256 === source.checksumSha256 && existing.storageKey === source.storageKey
+          && existing.storageVersionId === source.storageVersionId && existing.pipelineVersion === input.pipelineVersion && existing.modelId === input.modelId
+          ? JSON.stringify({ documentId: String(source.id), filename: source.filename, pages: existing.pages, facts: JSON.parse(existing.factsJson) }) : "null";
+      }
+      const pages = z.number().int().positive().max(200).parse(data.pages);
+      const facts = documentFactsSchema.parse(data.facts);
+      for (const entity of [...facts.entities, ...facts.relationships]) {
+        if (entity.evidence.some(item => item.page > pages)) throw new SenderError("Invalid document metadata page.");
+      }
+      const factsJson = JSON.stringify(facts);
+      if (factsJson.length > 500000) throw new SenderError("Document metadata is too large.");
+      const value = { documentId: source.id, spaceId, filename: source.filename, checksumSha256: source.checksumSha256,
+        storageBucket: source.storageBucket, storageKey: source.storageKey, storageVersionId: source.storageVersionId,
+        title: facts.title, documentType: facts.documentType, summary: facts.summary, factsJson,
+        pages, modelId: input.modelId, pipelineVersion: input.pipelineVersion, updatedAt: tx.timestamp };
+      if (existing) tx.db.documentMetadata.documentId.update(value); else tx.db.documentMetadata.insert(value);
+      return "null";
+    }
     if (operation === "cacheGet") {
       const cacheKey = z.string().regex(/^[a-f0-9]{64}$/).parse(data.cacheKey);
       const cache = tx.db.flowchartPageFindings.cacheKey.find(cacheKey);
@@ -74,7 +101,7 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
     if (operation === "cacheSave") {
       const cacheKey = z.string().regex(/^[a-f0-9]{64}$/).parse(data.cacheKey);
       const findingsJson = JSON.stringify(data.findings);
-      if (findingsJson.length > 100000) throw new SenderError("Page findings are too large.");
+      if (findingsJson.length > 500000) throw new SenderError("Cached findings are too large.");
       const value = { cacheKey, spaceId, ownerUsername: request.owner, findingsJson, createdAt: tx.timestamp };
       if (tx.db.flowchartPageFindings.cacheKey.find(cacheKey)) tx.db.flowchartPageFindings.cacheKey.update(value); else tx.db.flowchartPageFindings.insert(value);
     } else if (operation === "stage" || operation === "heartbeat") {
@@ -83,7 +110,7 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
     } else if (operation === "fail") {
       tx.db.flowcharts.spaceId.update({ ...row, status: "failed", error: z.string().max(2000).parse(data.error), updatedAt: tx.timestamp });
     } else if (operation === "save" || operation === "checkpoint") {
-      const graph = graphSchema.parse(data.graph);
+      const graph = withoutDanglingEdges(graphSchema.parse(data.graph));
       const documents = graphResultSchema.shape.documents.parse(data.documents);
       const actual = Array.from(tx.db.documents.spaceId.filter(spaceId));
       if (documents.some(doc => !actual.some(source => String(source.id) === doc.id && source.verifiedAt))) throw new SenderError("A source document is no longer available.");

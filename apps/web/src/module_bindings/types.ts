@@ -10,6 +10,24 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const DocumentAnalyses = __t.object("DocumentAnalyses", {
+  documentId: __t.u64(),
+  spaceId: __t.u64(),
+  checksumSha256: __t.string(),
+  storageBucket: __t.string(),
+  storageKey: __t.string(),
+  storageVersionId: __t.option(__t.string()),
+  documentType: __t.string(),
+  summary: __t.string(),
+  status: __t.string(),
+  error: __t.option(__t.string()),
+  processedPages: __t.u32(),
+  totalPages: __t.u32(),
+  modelId: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type DocumentAnalyses = __Infer<typeof DocumentAnalyses>;
+
 export const DocumentArtifacts = __t.object("DocumentArtifacts", {
   id: __t.u64(),
   documentId: __t.u64(),
