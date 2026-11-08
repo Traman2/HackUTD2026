@@ -6,5 +6,8 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
+import * as AskAgentProcedure from "../ask_agent_procedure";
 
+export type AskAgentArgs = __Infer<typeof AskAgentProcedure.params>;
+export type AskAgentResult = __Infer<typeof AskAgentProcedure.returnType>;
 
