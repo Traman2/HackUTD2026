@@ -6,10 +6,12 @@ import "./tunnel-router.mjs";
 const port = String(process.env.ROUTER_PORT || 8080);
 const domain = process.env.NGROK_DOMAIN;
 const args = ["http", port];
-if (domain) args.push(`--url=${domain}`);
+// --domain works on both older and current ngrok v3 releases (newer ones also accept --url).
+if (domain) args.push(`--domain=${domain}`);
 else console.warn("NGROK_DOMAIN is not set in .env.local; ngrok will use a random URL.");
 
-const ngrok = spawn("ngrok", args, { stdio: "inherit", shell: process.platform === "win32" });
+// No shell: Windows finds ngrok.exe on PATH directly, and args are passed safely.
+const ngrok = spawn("ngrok", args, { stdio: "inherit" });
 ngrok.on("error", error => {
   console.error("Could not start ngrok. Install it with: winget install ngrok.ngrok", error.message);
   process.exit(1);

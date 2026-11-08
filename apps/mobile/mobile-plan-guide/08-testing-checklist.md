@@ -50,8 +50,8 @@ behave the same.
 | `CLEARTEXT communication not permitted` | `network_security_config.xml` missing or not referenced in the manifest |
 | Everything returns empty / "Log in first" | Token lost or session removed → log in again |
 | Build error "requires compileSdk 37" | Step that dependency down one version (see guide 02) |
-| Registration never returns to the app | Check the `invisiblenetwork` scheme intent filter on `MainActivity`; Developer Mode on in Meta AI |
+| Registration never returns to the app | Check the `realestate` scheme intent filter on `MainActivity`; Developer Mode on in Meta AI |
 | `NOT_INITIALIZED` from Meta SDK | `Wearables.initialize(context)` not called before other SDK calls |
 | `addCamera` fails "already active" | Call `camera.stop()` when leaving Resolution Mode |
 | Black video, state STREAMING | Decoder not created: surface was null when frames arrived, or config frames not offered to `HevcParameterSetCollector` |
-| Logcat noise | Filter Logcat by package `com.hackutd.invisiblenetwork` |
+| Logcat noise | Filter Logcat by package `com.hackutd.realestate` |

@@ -21,5 +21,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "InvisibleNetwork"
+rootProject.name = "RealEstate"
 include(":app")

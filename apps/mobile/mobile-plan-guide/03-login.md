@@ -30,7 +30,7 @@ data class Profile(val username: String, val displayName: String)
 
 ## Login screen (Compose)
 
-- App name "Invisible Network" and a one-line subtitle ("Field resolution for your spaces").
+- App name "REALestate" and a one-line subtitle ("Field resolution for your spaces").
 - Username field (no autocorrect, `KeyboardType.Ascii`, `ImeAction.Next`).
 - Password field (masked, show/hide toggle, `ImeAction.Done` submits).
 - "Sign in" button, disabled while empty or loading; shows a progress indicator while loading.

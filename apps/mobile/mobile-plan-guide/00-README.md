@@ -37,21 +37,21 @@ plus the guide for that step. Ask for one guide at a time and build/run after ea
 
 ## Current project state
 
-- Native Kotlin + Jetpack Compose, package `com.hackutd.invisiblenetwork`.
+- Native Kotlin + Jetpack Compose, package `com.hackutd.realestate`.
 - minSdk 29 (Android 10, required by Meta's SDK), target/compile SDK 36 (Android 16, Galaxy S24 Ultra).
 - AGP 9.2.1 (newest supported by the installed Android Studio), Kotlin 2.4.21, Gradle 9.5.1.
 - Meta Wearables Device Access Toolkit 1.0.1 already added: `mwdat-core`, `mwdat-camera`,
   `mwdat-mockdevice`. (`mwdat-display` is intentionally omitted: Wayfarer Gen 2 has no display.)
 - Manifest already has Bluetooth/Internet/Camera permissions, the Meta app ID / client token
-  placeholders (`"0"` in Developer Mode), and the `invisiblenetwork://` callback scheme.
+  placeholders (`"0"` in Developer Mode), and the `realestate://` callback scheme.
 - `MainActivity` shows a Hello World screen.
 
 ## Suggested source layout (final)
 
 ```
-app/src/main/java/com/hackutd/invisiblenetwork/
+app/src/main/java/com/hackutd/realestate/
   MainActivity.kt              // initializes Meta SDK, hosts navigation
-  InvisibleNetworkApp.kt       // Application class (optional) holding singletons
+  RealEstateApp.kt       // Application class (optional) holding singletons
   data/
     SpacetimeClient.kt         // HTTP calls: identity, call reducer, SQL
     SessionStore.kt            // DataStore: saved identity token

@@ -1,4 +1,4 @@
-# Invisible Network — Android app
+# REALestate — Android app
 
 Native Kotlin (Jetpack Compose) app that connects to Ray-Ban Meta glasses (Wayfarer Gen 2)
 through the [Meta Wearables Device Access Toolkit](https://wearables.developer.meta.com/docs/getting-started-toolkit).
@@ -25,4 +25,4 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 - Install the Meta AI app (v254+), pair the glasses, and turn on Developer Mode in its settings.
 - While Developer Mode is on, the app ID and client token in `app/build.gradle.kts` can stay `"0"`.
   Replace them with values from the Wearables Developer Center for a release build.
-- Meta AI returns to this app through the `invisiblenetwork://` URL scheme (see `AndroidManifest.xml`).
+- Meta AI returns to this app through the `realestate://` URL scheme (see `AndroidManifest.xml`).

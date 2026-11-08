@@ -1,4 +1,4 @@
-package com.hackutd.invisiblenetwork.ui.theme
+package com.hackutd.realestate.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 @Composable
-fun InvisibleNetworkTheme(
+fun RealEstateTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {

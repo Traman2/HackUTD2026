@@ -38,7 +38,7 @@ import com.meta.wearable.dat.core.types.RegistrationState
 | Call | Purpose |
 |---|---|
 | `Wearables.initialize(context)` | Once per process, before anything else. Second call → `ALREADY_INITIALIZED` |
-| `Wearables.startRegistration(activity)` | Opens Meta AI to register; returns via `invisiblenetwork://` |
+| `Wearables.startRegistration(activity)` | Opens Meta AI to register; returns via `realestate://` |
 | `Wearables.registrationState` | Flow; `RegistrationState.REGISTERED` when done |
 | `Wearables.devices` | Flow of linked glasses |
 | `Wearables.checkPermissionStatus(Permission.CAMERA)` | suspend, returns `DatResult` |
@@ -69,7 +69,7 @@ tickets work without Bluetooth.
 In `GlassesManager`, collect `Wearables.registrationState` into a `StateFlow`. If not
 `REGISTERED`, the Resolution Mode screen shows a **Connect glasses** button →
 `Wearables.startRegistration(activity)`. Meta AI opens, the user approves, and Android returns to
-`MainActivity` through the `invisiblenetwork://` intent filter (already in the manifest;
+`MainActivity` through the `realestate://` intent filter (already in the manifest;
 `launchMode="singleTop"` keeps the same activity).
 
 ### 3. Camera permission on the glasses
