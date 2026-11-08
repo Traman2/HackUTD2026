@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSpacetimeDB } from "spacetimedb/react";
@@ -10,6 +10,7 @@ import { login, loginErrorMessage } from "@/lib/auth";
 import { loginSchema, type LoginValues } from "@/lib/validation/login";
 
 export default function Login() {
+  const navigate = useNavigate();
   const { token, isActive } = useSpacetimeDB();
   const [signedIn, setSignedIn] = useState(false);
   const {
@@ -38,6 +39,7 @@ export default function Login() {
       await login(values, token);
       resetField("password");
       setSignedIn(true);
+      navigate("/spaces", { replace: true });
     } catch (error) {
       setError("root", { message: loginErrorMessage(error) });
     }

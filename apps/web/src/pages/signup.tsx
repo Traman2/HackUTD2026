@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSpacetimeDB } from "spacetimedb/react";
@@ -10,6 +10,7 @@ import { signup, signupErrorMessage } from "@/lib/auth";
 import { signupSchema, type SignupValues } from "@/lib/validation/signup";
 
 export default function Signup() {
+  const navigate = useNavigate();
   const { token, isActive } = useSpacetimeDB();
   const [signedUp, setSignedUp] = useState(false);
   const {
@@ -38,6 +39,7 @@ export default function Signup() {
       await signup(values, token);
       resetField("password");
       setSignedUp(true);
+      navigate("/spaces", { replace: true });
     } catch (error) {
       const message = signupErrorMessage(error);
       setError(message === "Username is already taken." ? "username" : "root", { message }, { shouldFocus: message === "Username is already taken." });
