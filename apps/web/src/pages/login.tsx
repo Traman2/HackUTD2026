@@ -62,8 +62,8 @@ export default function Login() {
         </Link>
       </header>
 
-      <main className="w-full max-w-81.5 py-10">
-        <h1 className="mb-5 text-center text-[22px] leading-7 font-bold tracking-[-0.5px]">
+      <main className="w-full max-w-81.5 py-8">
+        <h1 className="mb-4 text-center text-[22px] leading-7 font-bold tracking-[-0.5px]">
           Welcome back
         </h1>
         <form
@@ -75,10 +75,10 @@ export default function Login() {
           noValidate
           aria-busy={isSubmitting}
         >
-          <div className="mb-5">
+          <div className="mb-3">
             <Label
               htmlFor="username"
-              className="mb-1.5 block text-xs font-semibold"
+              className="mb-1 block text-xs font-semibold"
             >
               Username
             </Label>
@@ -102,10 +102,10 @@ export default function Login() {
               {errors.username?.message}
             </p>
           </div>
-          <div className="mb-4">
+          <div className="mb-3">
             <Label
               htmlFor="password"
-              className="mb-1.5 block text-xs font-semibold"
+              className="mb-1 block text-xs font-semibold"
             >
               Password
             </Label>
@@ -131,7 +131,7 @@ export default function Login() {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="h-7 w-full rounded-lg bg-black text-xs font-semibold text-white hover:bg-[#242424] focus-visible:ring-[#b9d8f3]"
+            className="h-10 w-full rounded-lg bg-black text-sm font-semibold text-white hover:bg-[#242424] focus-visible:ring-[#b9d8f3]"
           >
             {isSubmitting ? "Signing in..." : "Continue"}
           </Button>
@@ -149,7 +149,7 @@ export default function Login() {
             </p>
           )}
         </form>
-        <p className="mt-3.5 text-center text-[10px]">
+        <p className="mt-3 text-center text-[10px]">
           Don't have an account?{" "}
           <Link
             to="/signup"
@@ -162,3 +162,4 @@ export default function Login() {
     </div>
   );
 }
+
