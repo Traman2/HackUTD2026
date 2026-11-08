@@ -1,17 +1,28 @@
-import { SenderError, t } from "spacetimedb/server";
+import { SenderError, t, type InferSchema, type ReducerCtx, type TransactionCtx } from "spacetimedb/server";
 import spacetimedb from "../schema";
 import { requireSpace, requireUser } from "../validation/ownership";
 import { spaceInput } from "../validation/documents";
 
-export const create_space = spacetimedb.reducer(
-  { name: t.string(), description: t.string() },
-  (ctx, input) => {
+function insertSpace(
+  ctx: ReducerCtx<InferSchema<typeof spacetimedb>> | TransactionCtx<InferSchema<typeof spacetimedb>>,
+  input: { name: string; description: string },
+) {
     const ownerUsername = requireUser(ctx);
     const parsed = spaceInput.safeParse(input);
     if (!parsed.success) throw new SenderError(parsed.error.issues[0].message);
-    ctx.db.spaces.insert({ id: 0n, ownerUsername, ...parsed.data,
+    return ctx.db.spaces.insert({ id: 0n, ownerUsername, ...parsed.data,
       archived: false, createdAt: ctx.timestamp, updatedAt: ctx.timestamp });
-  },
+}
+
+export const create_space = spacetimedb.reducer(
+  { name: t.string(), description: t.string() },
+  (ctx, input) => { insertSpace(ctx, input); },
+);
+
+// Return the exact new ID so uploads never have to guess from names or views.
+export const create_space_with_id = spacetimedb.procedure(
+  { name: t.string(), description: t.string() }, t.u64(),
+  (ctx, input) => ctx.withTx(tx => insertSpace(tx, input).id),
 );
 
 export const update_space = spacetimedb.reducer(

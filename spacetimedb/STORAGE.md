@@ -124,8 +124,13 @@ The helper computes SHA-256, calls `requestDocumentUpload`, PUTs the file direct
 to S3, then calls `confirmDocumentUpload`. The backend accepts only `.pdf` /
 `application/pdf`, 5 bytes–20 MiB, and binds the signed URL to the exact size,
 MIME, and checksum. Browsers set Content-Length automatically. Do not add an
-application authorization header to the S3 PUT. The drop-zone UI itself is not
-part of this backend change; the helper is ready for its drop handler.
+application authorization header to the S3 PUT. The create-space modal on `/spaces`
+uses this helper for its drop zone. It previews the selected PDF locally and
+shows selectable cards for all attached files before upload.
+It calls `createSpaceWithId` to create the
+space and obtain its ID, then uploads and confirms each selected PDF. On partial
+failure, the page retains the space/document IDs so retries do not create
+duplicate records. Successful creation closes the modal and updates the spaces grid.
 
 Request a private preview/download URL:
 

@@ -6,6 +6,7 @@ export async function uploadSpacePdf(
   spaceId: bigint,
   file: File,
   category = "general",
+  options: { onDocumentCreated?: (documentId: bigint) => void } = {},
 ): Promise<bigint> {
   if (!/\.pdf$/i.test(file.name) || file.size < 5 || file.size > 20 * 1024 * 1024) {
     throw new Error("Choose a PDF between 5 bytes and 20 MiB.");
@@ -16,6 +17,7 @@ export async function uploadSpacePdf(
     spaceId, filename: file.name, mimeType: "application/pdf",
     sizeBytes: file.size, checksumSha256, category,
   });
+  options.onDocumentCreated?.(ticket.documentId);
   await putAndConfirm(connection, ticket, file);
   return ticket.documentId;
 }
@@ -39,6 +41,6 @@ async function putAndConfirm(
     headers: { "Content-Type": ticket.contentType, "x-amz-checksum-sha256": ticket.checksumSha256 },
     body: file,
   });
-  if (!response.ok) throw new Error(`S3 upload failed (${response.status}). Retry from the document library.`);
+  if (!response.ok) throw new Error(`PDF upload failed (${response.status}). Please retry.`);
   await connection.procedures.confirmDocumentUpload({ documentId: ticket.documentId });
 }

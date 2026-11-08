@@ -48,6 +48,7 @@ import UpdateSpaceReducer from "./update_space_reducer.ts";
 import * as AskAgentProcedure from "./ask_agent_procedure.ts";
 import * as CleanupDocumentUploadProcedure from "./cleanup_document_upload_procedure.ts";
 import * as ConfirmDocumentUploadProcedure from "./confirm_document_upload_procedure.ts";
+import * as CreateSpaceWithIdProcedure from "./create_space_with_id_procedure.ts";
 import * as RequestDocumentDownloadProcedure from "./request_document_download_procedure.ts";
 import * as RequestDocumentUploadProcedure from "./request_document_upload_procedure.ts";
 import * as RetryDocumentUploadProcedure from "./retry_document_upload_procedure.ts";
@@ -102,6 +103,7 @@ const proceduresSchema = __procedures(
   __procedureSchema("ask_agent", AskAgentProcedure.params, AskAgentProcedure.returnType),
   __procedureSchema("cleanup_document_upload", CleanupDocumentUploadProcedure.params, CleanupDocumentUploadProcedure.returnType),
   __procedureSchema("confirm_document_upload", ConfirmDocumentUploadProcedure.params, ConfirmDocumentUploadProcedure.returnType),
+  __procedureSchema("create_space_with_id", CreateSpaceWithIdProcedure.params, CreateSpaceWithIdProcedure.returnType),
   __procedureSchema("request_document_download", RequestDocumentDownloadProcedure.params, RequestDocumentDownloadProcedure.returnType),
   __procedureSchema("request_document_upload", RequestDocumentUploadProcedure.params, RequestDocumentUploadProcedure.returnType),
   __procedureSchema("retry_document_upload", RetryDocumentUploadProcedure.params, RetryDocumentUploadProcedure.returnType),
