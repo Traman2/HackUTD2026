@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Greeting(modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = "Hello World", style = MaterialTheme.typography.headlineMedium)
+        Text(text = "Hello Worl", style = MaterialTheme.typography.headlineMedium)
     }
 }
 

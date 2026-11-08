@@ -13,8 +13,10 @@ import LoginReducer from "../login_reducer.ts";
 import LogoutReducer from "../logout_reducer.ts";
 import SaveProfileReducer from "../save_profile_reducer.ts";
 import SetSpaceArchivedReducer from "../set_space_archived_reducer.ts";
+import SetTicketStatusReducer from "../set_ticket_status_reducer.ts";
 import SignupReducer from "../signup_reducer.ts";
 import UpdateSpaceReducer from "../update_space_reducer.ts";
+import UpdateTicketStepReducer from "../update_ticket_step_reducer.ts";
 
 export type CancelDocumentUploadParams = __Infer<typeof CancelDocumentUploadReducer>;
 export type CreateSpaceParams = __Infer<typeof CreateSpaceReducer>;
@@ -23,6 +25,8 @@ export type LoginParams = __Infer<typeof LoginReducer>;
 export type LogoutParams = __Infer<typeof LogoutReducer>;
 export type SaveProfileParams = __Infer<typeof SaveProfileReducer>;
 export type SetSpaceArchivedParams = __Infer<typeof SetSpaceArchivedReducer>;
+export type SetTicketStatusParams = __Infer<typeof SetTicketStatusReducer>;
 export type SignupParams = __Infer<typeof SignupReducer>;
 export type UpdateSpaceParams = __Infer<typeof UpdateSpaceReducer>;
+export type UpdateTicketStepParams = __Infer<typeof UpdateTicketStepReducer>;
 

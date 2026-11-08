@@ -41,8 +41,10 @@ import LoginReducer from "./login_reducer.ts";
 import LogoutReducer from "./logout_reducer.ts";
 import SaveProfileReducer from "./save_profile_reducer.ts";
 import SetSpaceArchivedReducer from "./set_space_archived_reducer.ts";
+import SetTicketStatusReducer from "./set_ticket_status_reducer.ts";
 import SignupReducer from "./signup_reducer.ts";
 import UpdateSpaceReducer from "./update_space_reducer.ts";
+import UpdateTicketStepReducer from "./update_ticket_step_reducer.ts";
 
 // Import all procedure arg schemas
 import * as AgentFlowchartStoreProcedure from "./agent_flowchart_store_procedure.ts";
@@ -50,20 +52,26 @@ import * as AnalyzeSpaceRiskProcedure from "./analyze_space_risk_procedure.ts";
 import * as AskAgentProcedure from "./ask_agent_procedure.ts";
 import * as CleanupDocumentUploadProcedure from "./cleanup_document_upload_procedure.ts";
 import * as ConfirmDocumentUploadProcedure from "./confirm_document_upload_procedure.ts";
+import * as ConfirmTicketPhotoUploadProcedure from "./confirm_ticket_photo_upload_procedure.ts";
 import * as CreateSpaceWithIdProcedure from "./create_space_with_id_procedure.ts";
 import * as GenerateSpaceFlowchartProcedure from "./generate_space_flowchart_procedure.ts";
 import * as GenerateSpaceTicketsProcedure from "./generate_space_tickets_procedure.ts";
 import * as GetSpaceFlowchartProcedure from "./get_space_flowchart_procedure.ts";
 import * as GetSpaceRiskProcedure from "./get_space_risk_procedure.ts";
 import * as GetSpaceTicketsProcedure from "./get_space_tickets_procedure.ts";
+import * as GetTicketProcedure from "./get_ticket_procedure.ts";
 import * as RequestDocumentDownloadProcedure from "./request_document_download_procedure.ts";
 import * as RequestDocumentUploadProcedure from "./request_document_upload_procedure.ts";
+import * as RequestTicketPhotoDownloadProcedure from "./request_ticket_photo_download_procedure.ts";
+import * as RequestTicketPhotoUploadProcedure from "./request_ticket_photo_upload_procedure.ts";
 import * as RetryDocumentUploadProcedure from "./retry_document_upload_procedure.ts";
 
 // Import all table schema definitions
 import MyDocumentsRow from "./my_documents_table.ts";
 import MyProfileRow from "./my_profile_table.ts";
 import MySpacesRow from "./my_spaces_table.ts";
+import MyTicketPhotosRow from "./my_ticket_photos_table.ts";
+import MyTicketsRow from "./my_tickets_table.ts";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -90,6 +98,20 @@ const tablesSchema = __schema({
     constraints: [
     ],
   }, MySpacesRow),
+  myTicketPhotos: __table({
+    name: 'my_ticket_photos',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyTicketPhotosRow),
+  myTickets: __table({
+    name: 'my_tickets',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MyTicketsRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
@@ -101,8 +123,10 @@ const reducersSchema = __reducers(
   __reducerSchema("logout", LogoutReducer),
   __reducerSchema("save_profile", SaveProfileReducer),
   __reducerSchema("set_space_archived", SetSpaceArchivedReducer),
+  __reducerSchema("set_ticket_status", SetTicketStatusReducer),
   __reducerSchema("signup", SignupReducer),
   __reducerSchema("update_space", UpdateSpaceReducer),
+  __reducerSchema("update_ticket_step", UpdateTicketStepReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
@@ -112,14 +136,18 @@ const proceduresSchema = __procedures(
   __procedureSchema("ask_agent", AskAgentProcedure.params, AskAgentProcedure.returnType),
   __procedureSchema("cleanup_document_upload", CleanupDocumentUploadProcedure.params, CleanupDocumentUploadProcedure.returnType),
   __procedureSchema("confirm_document_upload", ConfirmDocumentUploadProcedure.params, ConfirmDocumentUploadProcedure.returnType),
+  __procedureSchema("confirm_ticket_photo_upload", ConfirmTicketPhotoUploadProcedure.params, ConfirmTicketPhotoUploadProcedure.returnType),
   __procedureSchema("create_space_with_id", CreateSpaceWithIdProcedure.params, CreateSpaceWithIdProcedure.returnType),
   __procedureSchema("generate_space_flowchart", GenerateSpaceFlowchartProcedure.params, GenerateSpaceFlowchartProcedure.returnType),
   __procedureSchema("generate_space_tickets", GenerateSpaceTicketsProcedure.params, GenerateSpaceTicketsProcedure.returnType),
   __procedureSchema("get_space_flowchart", GetSpaceFlowchartProcedure.params, GetSpaceFlowchartProcedure.returnType),
   __procedureSchema("get_space_risk", GetSpaceRiskProcedure.params, GetSpaceRiskProcedure.returnType),
   __procedureSchema("get_space_tickets", GetSpaceTicketsProcedure.params, GetSpaceTicketsProcedure.returnType),
+  __procedureSchema("get_ticket", GetTicketProcedure.params, GetTicketProcedure.returnType),
   __procedureSchema("request_document_download", RequestDocumentDownloadProcedure.params, RequestDocumentDownloadProcedure.returnType),
   __procedureSchema("request_document_upload", RequestDocumentUploadProcedure.params, RequestDocumentUploadProcedure.returnType),
+  __procedureSchema("request_ticket_photo_download", RequestTicketPhotoDownloadProcedure.params, RequestTicketPhotoDownloadProcedure.returnType),
+  __procedureSchema("request_ticket_photo_upload", RequestTicketPhotoUploadProcedure.params, RequestTicketPhotoUploadProcedure.returnType),
   __procedureSchema("retry_document_upload", RetryDocumentUploadProcedure.params, RetryDocumentUploadProcedure.returnType),
 );
 
@@ -131,6 +159,10 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "my_profile": Omit<typeof tablesSchema.schemaType.tables["myProfile"], "accessorName"> & { readonly accessorName: "my_profile" };
     /** @deprecated Use `mySpaces` instead. This alias will be removed in the next major version. */
     readonly "my_spaces": Omit<typeof tablesSchema.schemaType.tables["mySpaces"], "accessorName"> & { readonly accessorName: "my_spaces" };
+    /** @deprecated Use `myTicketPhotos` instead. This alias will be removed in the next major version. */
+    readonly "my_ticket_photos": Omit<typeof tablesSchema.schemaType.tables["myTicketPhotos"], "accessorName"> & { readonly accessorName: "my_ticket_photos" };
+    /** @deprecated Use `myTickets` instead. This alias will be removed in the next major version. */
+    readonly "my_tickets": Omit<typeof tablesSchema.schemaType.tables["myTickets"], "accessorName"> & { readonly accessorName: "my_tickets" };
   };
 };
 
@@ -152,6 +184,8 @@ const tableAccessorAliases = {
   "my_documents": "myDocuments",
   "my_profile": "myProfile",
   "my_spaces": "mySpaces",
+  "my_ticket_photos": "myTicketPhotos",
+  "my_tickets": "myTickets",
 } as const;
 
 function __withTableAccessorAliases<T extends object>(target: T, freeze = false): T {
@@ -178,6 +212,10 @@ export type DbView = __DbViewBase & {
   readonly "my_profile": __DbViewBase["myProfile"];
   /** @deprecated Use `mySpaces` instead. This alias will be removed in the next major version. */
   readonly "my_spaces": __DbViewBase["mySpaces"];
+  /** @deprecated Use `myTicketPhotos` instead. This alias will be removed in the next major version. */
+  readonly "my_ticket_photos": __DbViewBase["myTicketPhotos"];
+  /** @deprecated Use `myTickets` instead. This alias will be removed in the next major version. */
+  readonly "my_tickets": __DbViewBase["myTickets"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
@@ -188,6 +226,10 @@ export type Tables = __TablesBase & {
   readonly "my_profile": __TablesBase["myProfile"];
   /** @deprecated Use `mySpaces` instead. This alias will be removed in the next major version. */
   readonly "my_spaces": __TablesBase["mySpaces"];
+  /** @deprecated Use `myTicketPhotos` instead. This alias will be removed in the next major version. */
+  readonly "my_ticket_photos": __TablesBase["myTicketPhotos"];
+  /** @deprecated Use `myTickets` instead. This alias will be removed in the next major version. */
+  readonly "my_tickets": __TablesBase["myTickets"];
 };
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */

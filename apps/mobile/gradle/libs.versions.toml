@@ -2,10 +2,12 @@
 # AGP 9.2.1 is the newest version the installed Android Studio (2026.1) supports.
 agp = "9.2.1"
 kotlin = "2.4.21"
-coreKtx = "1.19.1"
-lifecycleRuntimeKtx = "2.11.0"
-activityCompose = "1.13.0"
-composeBom = "2026.09.00"
+# AndroidX versions below are the newest that compile against API 36 (installed SDK).
+# The next releases require compileSdk 37.
+coreKtx = "1.18.0"
+lifecycleRuntimeKtx = "2.10.0"
+activityCompose = "1.12.4"
+composeBom = "2026.06.01"
 # Meta Wearables Device Access Toolkit (Ray-Ban Meta Gen 2 support).
 mwdat = "1.0.1"
 

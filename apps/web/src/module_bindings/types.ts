@@ -159,6 +159,12 @@ export type MyProfile = __Infer<typeof MyProfile>;
 export const MySpaces = __t.object("MySpaces", {});
 export type MySpaces = __Infer<typeof MySpaces>;
 
+export const MyTicketPhotos = __t.object("MyTicketPhotos", {});
+export type MyTicketPhotos = __Infer<typeof MyTicketPhotos>;
+
+export const MyTickets = __t.object("MyTickets", {});
+export type MyTickets = __Infer<typeof MyTickets>;
+
 export const PdfUploadTicket = __t.object("PdfUploadTicket", {
   documentId: __t.u64(),
   url: __t.string(),
@@ -220,6 +226,18 @@ export const Spaces = __t.object("Spaces", {
 });
 export type Spaces = __Infer<typeof Spaces>;
 
+export const TicketEvents = __t.object("TicketEvents", {
+  id: __t.u64(),
+  ticketId: __t.u64(),
+  spaceId: __t.u64(),
+  actor: __t.string(),
+  kind: __t.string(),
+  stepOrder: __t.u32(),
+  detail: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type TicketEvents = __Infer<typeof TicketEvents>;
+
 export const TicketJobs = __t.object("TicketJobs", {
   spaceId: __t.u64(),
   ownerUsername: __t.string(),
@@ -233,6 +251,80 @@ export const TicketJobs = __t.object("TicketJobs", {
   updatedAt: __t.timestamp(),
 });
 export type TicketJobs = __Infer<typeof TicketJobs>;
+
+export const TicketPhotoSummary = __t.object("TicketPhotoSummary", {
+  id: __t.u64(),
+  ticketId: __t.u64(),
+  spaceId: __t.u64(),
+  stepOrder: __t.u32(),
+  caption: __t.string(),
+  source: __t.string(),
+  contentType: __t.string(),
+  sizeBytes: __t.u32(),
+  status: __t.string(),
+  capturedBy: __t.string(),
+  createdAt: __t.timestamp(),
+  verifiedAt: __t.option(__t.timestamp()),
+});
+export type TicketPhotoSummary = __Infer<typeof TicketPhotoSummary>;
+
+export const TicketPhotoUploadTicket = __t.object("TicketPhotoUploadTicket", {
+  photoId: __t.u64(),
+  url: __t.string(),
+  expiresAt: __t.timestamp(),
+  contentType: __t.string(),
+  checksumSha256: __t.string(),
+});
+export type TicketPhotoUploadTicket = __Infer<typeof TicketPhotoUploadTicket>;
+
+export const TicketPhotos = __t.object("TicketPhotos", {
+  id: __t.u64(),
+  ticketId: __t.u64(),
+  spaceId: __t.u64(),
+  ownerUsername: __t.string(),
+  stepOrder: __t.u32(),
+  caption: __t.string(),
+  source: __t.string(),
+  contentType: __t.string(),
+  sizeBytes: __t.u32(),
+  checksumSha256: __t.string(),
+  storageBucket: __t.string(),
+  storageRegion: __t.string(),
+  storageKey: __t.string(),
+  status: __t.string(),
+  capturedBy: __t.string(),
+  createdAt: __t.timestamp(),
+  verifiedAt: __t.option(__t.timestamp()),
+});
+export type TicketPhotos = __Infer<typeof TicketPhotos>;
+
+export const TicketRow = __t.object("TicketRow", {
+  id: __t.u64(),
+  spaceId: __t.u64(),
+  ownerUsername: __t.string(),
+  problemKey: __t.string(),
+  title: __t.string(),
+  kind: __t.string(),
+  priority: __t.string(),
+  status: __t.string(),
+  assetLabel: __t.string(),
+  equipmentCode: __t.string(),
+  overviewNodeId: __t.option(__t.string()),
+  networkNodeId: __t.string(),
+  summary: __t.string(),
+  safetyNotes: __t.string(),
+  get steps() {
+    return __t.array(TicketStep);
+  },
+  get sources() {
+    return __t.array(TicketSource);
+  },
+  draftedBy: __t.string(),
+  jobId: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
+});
+export type TicketRow = __Infer<typeof TicketRow>;
 
 export const TicketSource = __t.object("TicketSource", {
   documentId: __t.string(),
