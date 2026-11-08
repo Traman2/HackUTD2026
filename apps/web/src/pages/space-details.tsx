@@ -73,27 +73,27 @@ export default function SpaceDetails() {
 
   return (
     <div className={`flex h-svh flex-col overflow-hidden bg-[#faf9f6] text-[#37352f] ${resizing ? "cursor-col-resize select-none" : ""}`}>
-      <header className="flex h-16 shrink-0 items-center border-b border-[#e3e3e7] bg-white">
-        <div className="flex h-full w-16 shrink-0 items-center justify-center border-r border-[#e3e3e7]">
-          <Link to="/spaces" aria-label="Back to your spaces" title="Back to your spaces" className="flex size-9 items-center justify-center rounded-lg text-[#78766e] transition-colors hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">
+      <header className="flex h-12 shrink-0 items-center border-b border-[#e3e3e7] bg-white">
+        <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#e3e3e7]">
+          <Link to="/spaces" aria-label="Back to your spaces" title="Back to your spaces" className="flex size-8 items-center justify-center rounded-md text-[#78766e] transition-colors hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">
             <ArrowLeft aria-hidden="true" className="size-4" />
           </Link>
         </div>
-        <h1 className="min-w-0 truncate px-5 text-base font-semibold tracking-[-0.3px] sm:px-6">
+        <h1 className="min-w-0 truncate px-3 text-sm font-semibold tracking-[-0.3px] sm:px-4">
           {space?.name || (ready ? "Space not found" : "Loading space...")}
         </h1>
         {space?.archived && <span className="mr-5 shrink-0 rounded border border-[#e3e3e7] px-2 py-0.5 text-[10px] text-[#78766e]">Archived</span>}
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside aria-label="Space actions" className="flex w-16 shrink-0 flex-col items-center gap-3 border-r border-[#e3e3e7] bg-white py-5">
+        <aside aria-label="Space actions" className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-[#e3e3e7] bg-white py-2">
           {tools.map(({ label, icon: Icon }) => (
-            <Button key={label} type="button" variant="ghost" size="icon-lg" disabled={!space} aria-label={label} title={label} className="size-10 rounded-xl text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:ring-[#b9d8f3]">
-              <Icon aria-hidden="true" className="size-5" />
+            <Button key={label} type="button" variant="ghost" size="icon-lg" disabled={!space} aria-label={label} title={label} className="size-8 rounded-md text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:ring-[#b9d8f3]">
+              <Icon aria-hidden="true" className="size-4" />
             </Button>
           ))}
-          <Button ref={filesButton} type="button" variant="ghost" size="icon-lg" disabled={!space} aria-label="View files" title="View files" aria-expanded={filesOpen && !!space} aria-controls="space-files-panel" onClick={() => { if (filesOpen) closeFiles(); else setFilesOpen(true); }} className={`size-10 rounded-xl focus-visible:ring-[#b9d8f3] ${filesOpen && space ? "bg-[#f3f2ee] text-[#37352f]" : "text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f]"}`}>
-            <FolderOpen aria-hidden="true" className="size-5" />
+          <Button ref={filesButton} type="button" variant="ghost" size="icon-lg" disabled={!space} aria-label="View files" title="View files" aria-expanded={filesOpen && !!space} aria-controls="space-files-panel" onClick={() => { if (filesOpen) closeFiles(); else setFilesOpen(true); }} className={`size-8 rounded-md focus-visible:ring-[#b9d8f3] ${filesOpen && space ? "bg-[#f3f2ee] text-[#37352f]" : "text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f]"}`}>
+            <FolderOpen aria-hidden="true" className="size-4" />
           </Button>
         </aside>
 
@@ -120,7 +120,7 @@ export default function SpaceDetails() {
             }} className="group absolute inset-y-0 -left-1.5 z-30 flex w-3 touch-none cursor-col-resize items-center justify-center outline-none before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-transparent hover:before:bg-[#b9d8f3] focus-visible:before:w-0.5 focus-visible:before:bg-[#b9d8f3]">
               <span className="relative flex h-8 w-3 items-center justify-center rounded border border-[#e3e3e7] bg-white text-[#939188] shadow-sm group-hover:border-[#b9d8f3] group-focus-visible:border-[#b9d8f3]"><GripVertical aria-hidden="true" className="size-3" /></span>
             </div>
-            <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-[#e3e3e7] px-4">
+            <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[#e3e3e7] px-3">
               <h2 className="text-sm font-semibold">Files <span className="ml-1 text-xs font-normal text-[#939188]">{documentsReady ? documents.length : ""}</span></h2>
               <Button type="button" variant="ghost" size="icon-sm" aria-label="Close files panel" onClick={closeFiles}><X aria-hidden="true" /></Button>
             </header>

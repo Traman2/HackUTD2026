@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Dialog } from "@base-ui/react/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Check, FileText, LoaderCircle, Plus, Upload, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -130,20 +131,26 @@ export function CreateSpaceDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Dialog.Root open onOpenChange={(open, details) => {
-      if (!open) {
-        if (submissionLock.current) details.cancel();
-        else onClose();
-      }
-    }} disablePointerDismissal={isSubmitting}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-40 bg-[#23221f]/35 backdrop-blur-[3px]" />
-        <Dialog.Popup initialFocus={() => document.getElementById("space-name")} className="fixed top-1/2 left-1/2 z-50 max-h-[90svh] w-[calc(100%-2rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-[#e3e3e7] bg-white text-[#37352f] shadow-2xl outline-none">
-          <Dialog.Close render={<Button type="button" variant="ghost" size="icon-sm" aria-label="Close create space" disabled={isSubmitting} className="absolute top-4 right-4 z-10 bg-white/90" />}><X aria-hidden="true" /></Dialog.Close>
+    <Dialog open onOpenChange={open => {
+      if (!open && !submissionLock.current) onClose();
+    }}>
+      <DialogContent
+        showCloseButton={false}
+        onOpenAutoFocus={event => {
+          event.preventDefault();
+          document.getElementById("space-name")?.focus();
+        }}
+        onEscapeKeyDown={event => { if (submissionLock.current) event.preventDefault(); }}
+        onInteractOutside={event => { if (submissionLock.current) event.preventDefault(); }}
+        className="block max-h-[90svh] w-[calc(100%-2rem)] max-w-5xl overflow-y-auto rounded-2xl border-[#e3e3e7] bg-white p-0 text-[#37352f] shadow-2xl sm:max-w-5xl motion-reduce:animate-none"
+      >
+          <DialogClose asChild><Button type="button" variant="ghost" size="icon-sm" aria-label="Close create space" disabled={isSubmitting} className="absolute top-4 right-4 z-10 bg-white/90"><X aria-hidden="true" /></Button></DialogClose>
           <form onSubmit={handleSubmit(onSubmit)} noValidate aria-busy={isSubmitting} className="grid min-h-[38rem] md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
             <div className="flex min-w-0 flex-col p-6 sm:p-8">
-              <Dialog.Title className="text-[24px] leading-8 font-bold tracking-[-0.6px]">Create a new space</Dialog.Title>
-              <Dialog.Description className="mt-2 text-xs leading-5 text-[#78766e]">Bring your property research and documents together.</Dialog.Description>
+              <DialogHeader className="gap-0 text-left">
+              <DialogTitle className="text-[24px] leading-8 font-bold tracking-[-0.6px]">Create a new space</DialogTitle>
+              <DialogDescription className="mt-2 text-xs leading-5 text-[#78766e]">Bring your property research and documents together.</DialogDescription>
+              </DialogHeader>
               <fieldset disabled={locked} className="mt-8 space-y-6 disabled:opacity-70">
                 <div>
                   <Label htmlFor="space-name" className="mb-2 block text-xs font-semibold">Space name <span aria-hidden="true">*</span></Label>
@@ -152,7 +159,7 @@ export function CreateSpaceDialog({ onClose }: { onClose: () => void }) {
                 </div>
                 <div>
                   <Label htmlFor="space-description" className="mb-2 block text-xs font-semibold">Description <span className="font-normal text-[#939188]">(optional)</span></Label>
-                  <textarea id="space-description" {...register("description")} maxLength={2000} rows={6} placeholder="What are you researching about this property?" aria-invalid={!!errors.description} aria-describedby={errors.description ? "space-description-error" : undefined} className={`w-full resize-y rounded-lg border px-3 py-2.5 outline-none placeholder:text-[#a09e96] ${fieldClass}`} />
+                  <Textarea id="space-description" {...register("description")} maxLength={2000} rows={6} placeholder="What are you researching about this property?" aria-invalid={!!errors.description} aria-describedby={errors.description ? "space-description-error" : undefined} className={`w-full resize-y rounded-lg border px-3 py-2.5 outline-none placeholder:text-[#a09e96] ${fieldClass}`} />
                   {errors.description && <p id="space-description-error" role="alert" className="mt-1.5 text-xs text-[#d92323]">{errors.description.message}</p>}
                 </div>
               </fieldset>
@@ -164,7 +171,7 @@ export function CreateSpaceDialog({ onClose }: { onClose: () => void }) {
                     {isSubmitting && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
                     {isSubmitting ? (spaceId === null ? "Creating space..." : "Uploading PDFs...") : spaceId === null ? "Create space" : "Retry uploads"}
                   </Button>
-                  <Dialog.Close render={<Button type="button" variant="outline" disabled={isSubmitting} className="h-10 px-4 text-xs" />}>{spaceId === null ? "Cancel" : "Close"}</Dialog.Close>
+                  <DialogClose asChild><Button type="button" variant="outline" disabled={isSubmitting} className="h-10 px-4 text-xs">{spaceId === null ? "Cancel" : "Close"}</Button></DialogClose>
                 </div>
               </div>
             </div>
@@ -210,8 +217,7 @@ export function CreateSpaceDialog({ onClose }: { onClose: () => void }) {
               {fileError && <p role="alert" className="mt-3 text-xs leading-5 text-[#d92323]">{fileError}</p>}
             </section>
           </form>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+      </DialogContent>
+    </Dialog>
   );
 }
