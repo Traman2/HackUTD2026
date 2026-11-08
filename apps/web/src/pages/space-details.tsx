@@ -1,19 +1,19 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { ArrowLeft, FileText, FolderOpen, GripVertical, LoaderCircle, MessageSquare, Plus, Workflow, X } from "lucide-react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
+import { ArrowLeft, LoaderCircle } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
-import { Button } from "@/components/ui/button";
 import { DocumentPreviewDialog } from "@/components/document-preview-dialog";
+import { NodeDetailsPanel } from "@/components/node-details-panel";
+import { RiskPanel } from "@/components/risk-panel";
+import { ResizeHandle } from "@/components/resize-handle";
+import { SpaceFilesList } from "@/components/space-files-list";
+import { SpaceFlowchartView } from "@/components/space-flowchart-view";
+import { SpaceInsightsView } from "@/components/space-insights-view";
+import { SpaceSidebar, type SpaceView } from "@/components/space-sidebar";
 import { tables } from "@/module_bindings";
+import { useElementWidth, useResizableWidth } from "@/hooks/use-resizable-width";
 import { useSpaceFlowchart } from "@/hooks/use-space-flowchart";
-
-const SpaceFlowchart = lazy(() => import("@/components/space-flowchart").then(module => ({ default: module.SpaceFlowchart })));
-
-const tools = [
-  { label: "Generate flowchart", icon: Workflow },
-  { label: "Open chat", icon: MessageSquare },
-  { label: "Add documents", icon: Plus },
-];
+import { useSpaceRisk } from "@/hooks/use-space-risk";
 
 export default function SpaceDetails() {
   const { spaceId } = useParams();
@@ -25,62 +25,90 @@ export default function SpaceDetails() {
   const id = spaceId && /^[1-9]\d{0,19}$/.test(spaceId) ? BigInt(spaceId) : null;
   // Resolve through the owner-filtered view, never an unscoped space lookup.
   const space = ready ? spaces.find(row => row.id === id) : undefined;
+
+  const [view, setView] = useState<SpaceView>("flowchart");
   const [filesOpen, setFilesOpen] = useState(false);
+  // The selected node stays set while its panel slides closed.
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [nodeOpen, setNodeOpen] = useState(false);
+  const [riskOpen, setRiskOpen] = useState(false);
   const [previewId, setPreviewId] = useState<bigint | null>(null);
   const [previewPage, setPreviewPage] = useState(1);
   const openGraphSource = useCallback((documentId: bigint, page: number) => { setPreviewPage(page); setPreviewId(documentId); }, []);
   const filesButton = useRef<HTMLButtonElement>(null);
-  const workspace = useRef<HTMLDivElement>(null);
-  const drag = useRef<{ x: number; width: number; pointerId: number } | null>(null);
-  const [workspaceWidth, setWorkspaceWidth] = useState(0);
-  const [filesWidthRatio, setFilesWidthRatio] = useState(0.25);
-  const [resizing, setResizing] = useState(false);
-  const minWidth = Math.min(240, workspaceWidth);
-  const maxWidth = Math.max(minWidth, workspaceWidth < 640 ? workspaceWidth : workspaceWidth * 0.7);
-  const panelWidth = Math.round(Math.min(maxWidth, Math.max(minWidth, workspaceWidth * filesWidthRatio)));
 
-  useEffect(() => {
-    const element = workspace.current;
-    if (!element) return;
-    const observer = new ResizeObserver(([entry]) => setWorkspaceWidth(entry.contentRect.width));
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [!!profile]);
+  // Both right-hand panels share one width so switching between them is stable.
+  const [workspace, workspaceWidth] = useElementWidth<HTMLDivElement>();
+  const sidePanel = useResizableWidth({
+    containerWidth: workspaceWidth,
+    defaultRatio: 0.25,
+    minWidth: 240,
+    maxWidth: workspaceWidth < 640 ? workspaceWidth : workspaceWidth * 0.7,
+    side: "right",
+    valueLabel: "workspace",
+  });
 
-  function resizeFiles(width: number) {
-    if (workspaceWidth > 0) setFilesWidthRatio(Math.min(maxWidth, Math.max(minWidth, width)) / workspaceWidth);
-  }
-
-  function finishResize(event: PointerEvent<HTMLDivElement>) {
-    drag.current = null;
-    setResizing(false);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  }
   const [documents, documentsReady] = useTable(
     tables.myDocuments.where(row => row.spaceId.eq(id ?? 0n)),
     { enabled: !!space },
   );
-  const sortedDocuments = [...documents].sort((a, b) => {
-    const aTime = a.createdAt.microsSinceUnixEpoch;
-    const bTime = b.createdAt.microsSinceUnixEpoch;
-    return aTime === bTime ? a.filename.localeCompare(b.filename) : aTime > bTime ? -1 : 1;
-  });
   const previewDocument = space && documentsReady ? documents.find(document => document.id === previewId) : undefined;
 
   const corpusRevision = documentsReady ? documents.map(document => `${document.id}:${document.checksumSha256}:${document.verifiedAt?.microsSinceUnixEpoch ?? ""}`).sort().join("|") : "";
   const flowchart = useSpaceFlowchart(space?.id, corpusRevision);
+  const graph = flowchart.result?.graph ?? null;
+  // A regenerated graph may no longer contain the selected node.
+  const nodeVisible = nodeOpen && view === "flowchart" && !!space && !!graph?.nodes.some(node => node.id === selectedNodeId);
+  const filesVisible = filesOpen && !!space;
+  // The risk agent runs only from the flowchart toolbar button; this just reads results.
+  const risk = useSpaceRisk(space?.id, flowchart.result?.generatedAt ?? null);
+  const currentRisk = risk.result?.stale ? null : risk.assessment;
+  const riskVisible = riskOpen && view === "flowchart" && !!space && !!graph;
 
   function closeFiles() {
-    drag.current = null;
-    setResizing(false);
+    sidePanel.cancel();
     setFilesOpen(false);
     filesButton.current?.focus();
+  }
+
+  function toggleFiles() {
+    if (filesOpen) return closeFiles();
+    setNodeOpen(false);
+    setRiskOpen(false);
+    setFilesOpen(true);
+  }
+
+  function openRisks() {
+    setFilesOpen(false);
+    setNodeOpen(false);
+    setRiskOpen(true);
+  }
+
+  function openNode(nodeId: string) {
+    setSelectedNodeId(nodeId);
+    setNodeOpen(true);
+    setFilesOpen(false);
+    setRiskOpen(false);
+  }
+
+  function changeView(next: SpaceView) {
+    setView(next);
+    if (next !== "flowchart") { setNodeOpen(false); setRiskOpen(false); }
+  }
+
+  function sidePanelShell(panelId: string, label: string, resizeLabel: string, open: boolean, onClose: () => void, children: ReactNode) {
+    return (
+      <aside id={panelId} aria-label={label} aria-hidden={!open} inert={!open} style={{ width: workspaceWidth ? sidePanel.width : "25%" }} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); onClose(); } }} className={`absolute inset-y-0 right-0 z-20 flex max-w-full flex-col border-l border-[#e3e3e7] bg-white shadow-lg transition-transform duration-250 ease-out motion-reduce:transition-none ${open ? "translate-x-0" : "translate-x-full"}`}>
+        <ResizeHandle label={resizeLabel} controls={panelId} visible={open} handleProps={sidePanel.handleProps} />
+        {children}
+      </aside>
+    );
   }
 
   if (isActive && profileReady && !profile) return <Navigate to="/login" replace />;
 
   return (
-    <div className={`flex h-svh flex-col overflow-hidden bg-[#faf9f6] text-[#37352f] ${resizing ? "cursor-col-resize select-none" : ""}`}>
+    <div className={`flex h-svh flex-col overflow-hidden bg-[#faf9f6] text-[#37352f] ${sidePanel.resizing ? "cursor-col-resize select-none" : ""}`}>
       <header className="flex h-12 shrink-0 items-center border-b border-[#e3e3e7] bg-white">
         <div className="flex h-full w-12 shrink-0 items-center justify-center border-r border-[#e3e3e7]">
           <Link to="/spaces" aria-label="Back to your spaces" title="Back to your spaces" className="flex size-8 items-center justify-center rounded-md text-[#78766e] transition-colors hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">
@@ -94,109 +122,40 @@ export default function SpaceDetails() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside aria-label="Space actions" className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-[#e3e3e7] bg-white py-2">
-          {tools.map(({ label, icon: Icon }) => (
-            <Button key={label} type="button" variant="ghost" size="icon-lg" disabled={!space || (label === "Generate flowchart" && (flowchart.busy || space.archived))} onClick={label === "Generate flowchart" ? flowchart.generate : undefined} aria-busy={label === "Generate flowchart" ? flowchart.busy : undefined} aria-label={label} title={label} className="size-8 rounded-md text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f] focus-visible:ring-[#b9d8f3]">
-              {label === "Generate flowchart" && flowchart.busy ? <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" /> : <Icon aria-hidden="true" className="size-4" />}
-            </Button>
-          ))}
-          <Button ref={filesButton} type="button" variant="ghost" size="icon-lg" disabled={!space} aria-label="View files" title="View files" aria-expanded={filesOpen && !!space} aria-controls="space-files-panel" onClick={() => { if (filesOpen) closeFiles(); else setFilesOpen(true); }} className={`size-8 rounded-md focus-visible:ring-[#b9d8f3] ${filesOpen && space ? "bg-[#f3f2ee] text-[#37352f]" : "text-[#78766e] hover:bg-[#f3f2ee] hover:text-[#37352f]"}`}>
-            <FolderOpen aria-hidden="true" className="size-4" />
-          </Button>
-        </aside>
+        <SpaceSidebar disabled={!space} view={view} onViewChange={changeView} filesOpen={filesOpen} onToggleFiles={toggleFiles} filesButtonRef={filesButton} />
 
         <div ref={workspace} className="relative flex min-w-0 flex-1 overflow-hidden">
-          <aside id="space-files-panel" aria-label="Files in this space" aria-hidden={!filesOpen || !space} inert={!filesOpen || !space} style={{ width: workspaceWidth ? panelWidth : "25%" }} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); closeFiles(); } }} className={`absolute inset-y-0 right-0 z-20 flex max-w-full flex-col border-l border-[#e3e3e7] bg-white shadow-lg transition-transform duration-250 ease-out motion-reduce:transition-none ${filesOpen && space ? "translate-x-0" : "translate-x-full"}`}>
-            <div role="separator" style={{ visibility: filesOpen && space ? "visible" : "hidden" }} aria-label="Resize files panel" aria-orientation="vertical" aria-controls="space-files-panel" aria-valuemin={Math.round(minWidth)} aria-valuemax={Math.round(maxWidth)} aria-valuenow={panelWidth} aria-valuetext={`${workspaceWidth ? Math.round(panelWidth / workspaceWidth * 100) : 25}% of workspace`} tabIndex={filesOpen && space ? 0 : -1} title="Drag to resize. Use arrow keys, or double-click to reset." onPointerDown={event => {
-              if (event.button !== 0) return;
-              event.preventDefault();
-              event.currentTarget.focus();
-              event.currentTarget.setPointerCapture(event.pointerId);
-              drag.current = { x: event.clientX, width: panelWidth, pointerId: event.pointerId };
-              setResizing(true);
-            }} onPointerMove={event => {
-              const current = drag.current;
-              if (current && current.pointerId === event.pointerId) resizeFiles(current.width + current.x - event.clientX);
-            }} onPointerUp={finishResize} onPointerCancel={finishResize} onLostPointerCapture={() => { drag.current = null; setResizing(false); }} onDoubleClick={() => setFilesWidthRatio(0.25)} onKeyDown={event => {
-              const step = event.shiftKey ? 48 : 16;
-              if (event.key === "ArrowLeft") resizeFiles(panelWidth + step);
-              else if (event.key === "ArrowRight") resizeFiles(panelWidth - step);
-              else if (event.key === "Home") resizeFiles(minWidth);
-              else if (event.key === "End") resizeFiles(maxWidth);
-              else return;
-              event.preventDefault();
-            }} className="group absolute inset-y-0 -left-1.5 z-30 flex w-3 touch-none cursor-col-resize items-center justify-center outline-none before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-transparent hover:before:bg-[#b9d8f3] focus-visible:before:w-0.5 focus-visible:before:bg-[#b9d8f3]">
-              <span className="relative flex h-8 w-3 items-center justify-center rounded border border-[#e3e3e7] bg-white text-[#939188] shadow-sm group-hover:border-[#b9d8f3] group-focus-visible:border-[#b9d8f3]"><GripVertical aria-hidden="true" className="size-3" /></span>
-            </div>
-            <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-[#e3e3e7] px-3">
-              <h2 className="text-sm font-semibold">Files <span className="ml-1 text-xs font-normal text-[#939188]">{documentsReady ? documents.length : ""}</span></h2>
-              <Button type="button" variant="ghost" size="icon-sm" aria-label="Close files panel" onClick={closeFiles}><X aria-hidden="true" /></Button>
-            </header>
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              {!documentsReady ? (
-                <p role="status" className="flex items-center justify-center gap-2 py-10 text-xs text-[#78766e]"><LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />Loading files...</p>
-              ) : sortedDocuments.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 px-3 py-12 text-center text-[#939188]"><FolderOpen aria-hidden="true" className="size-7" /><p className="text-xs">No documents in this space yet.</p></div>
-              ) : (
-                <ul aria-label="Space documents" className="space-y-2">
-                  {sortedDocuments.map(document => (
-                    <li key={document.id.toString()}>
-                      <button type="button" disabled={!document.verifiedAt} onClick={() => { setPreviewPage(1); setPreviewId(document.id); }} aria-haspopup="dialog" title={document.verifiedAt ? `Preview ${document.filename}` : "Preview is available after upload verification"} className="flex w-full cursor-pointer items-start gap-3 rounded-lg border border-[#e3e3e7] bg-white p-3 text-left transition-colors hover:border-[#b7b5ae] hover:bg-[#faf9f6] focus-visible:outline-2 focus-visible:outline-[#b9d8f3] disabled:cursor-default disabled:opacity-60">
-                        <FileText aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-[#939188]" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-medium" title={document.filename}>{document.filename}</span>
-                          <span className="mt-1 block text-[10px] text-[#939188]">PDF · {(document.sizeBytes / 1024 / 1024).toFixed(2)} MiB</span>
-                          {!document.verifiedAt && <span className={`mt-1.5 block text-[10px] ${document.status === "failed" ? "text-[#d92323]" : "text-[#78766e]"}`}>{document.status === "failed" ? "Upload failed" : "Awaiting verification"}</span>}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </aside>
-        <main aria-label="Space workspace" className="login-grid-bg flex min-w-0 flex-1 flex-col overflow-hidden">
-          {!ready ? (
-            <div role="status" className="flex h-full min-h-48 items-center justify-center gap-2 px-6 text-sm text-[#78766e]">
-              {!connectionError && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
-              {connectionError ? "Unable to connect. Refresh to try again." : "Loading your space..."}
-            </div>
-          ) : !space ? (
-            <div className="flex h-full min-h-48 flex-col items-center justify-center px-6 text-center">
-              <h2 className="text-lg font-semibold">Space not found</h2>
-              <p className="mt-2 text-xs leading-5 text-[#78766e]">This space is unavailable or does not belong to your account.</p>
-              <Link to="/spaces" className="mt-5 rounded text-xs font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">Return to your spaces</Link>
-            </div>
-          ) : (
-            <>
-              {(flowchart.busy || flowchart.error || flowchart.result?.error || flowchart.result?.stale) && <div className="z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[#e3e3e7] bg-white px-4 py-2 text-xs text-[#78766e]">
-                <p role={flowchart.error || flowchart.result?.error ? "alert" : "status"} className="flex items-center gap-2">
-                  {flowchart.busy && <LoaderCircle aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" />}
-                  {flowchart.error || flowchart.result?.error || (flowchart.busy ? flowchart.result?.stage || "Loading flowchart..." : "Documents have changed. Generate the flowchart again to update it.")}
-                </p>
-                {!flowchart.busy && <Button variant="ghost" size="xs" onClick={flowchart.error ? flowchart.retry : flowchart.generate} disabled={space.archived}>{flowchart.error ? "Retry" : "Generate again"}</Button>}
-              </div>}
-              <div className="min-h-0 flex-1">
-                {flowchart.result?.graph && flowchart.result.graph.nodes.length > 0 ? (
-                  <Suspense fallback={<p role="status" className="p-4 text-xs text-[#78766e]">Loading flowchart...</p>}><SpaceFlowchart key={space.id.toString()} graph={flowchart.result.graph} documents={flowchart.result.documents} onPreview={openGraphSource} status={flowchart.result.status} /></Suspense>
-                ) : (
-                  <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 px-6 text-center">
-                    {flowchart.busy || flowchart.loading ? <>
-                      <LoaderCircle aria-hidden="true" className="size-6 animate-spin text-[#78766e] motion-reduce:animate-none" />
-                      <p role="status" className="text-sm font-medium">{flowchart.busy ? "Generating flowchart..." : "Loading saved flowchart..."}</p>
-                      {flowchart.busy && <p className="max-w-sm text-xs leading-5 text-[#78766e]">{flowchart.result?.stage || "Starting document analysis. The chart will appear here when it is ready."}</p>}
-                    </> : <>
-                      <Workflow aria-hidden="true" className="mb-1 size-7 text-[#939188]" />
-                      <h2 className="text-sm font-semibold">{flowchart.result?.status === "ready" ? "No supported components identified" : flowchart.phase === "error" ? "Flowchart unavailable" : "No flowchart generated yet"}</h2>
-                      <p className="max-w-sm text-xs leading-5 text-[#78766e]">{documentsReady && documents.length === 0 ? "Add PDF documents to this space before generating a flowchart." : "Generate a flowchart from this space's documents. It will appear here when ready."}</p>
-                      <Button onClick={flowchart.generate} disabled={space.archived || !documentsReady || documents.length === 0} className="mt-1 text-xs"><Workflow aria-hidden="true" />{flowchart.phase === "error" ? "Generate again" : "Generate flowchart"}</Button>
-                    </>}
-                  </div>
-                )}
+          {sidePanelShell("space-files-panel", "Files in this space", "Resize files panel", filesVisible, closeFiles,
+            <SpaceFilesList documents={documents} ready={documentsReady} onPreview={documentId => openGraphSource(documentId, 1)} onClose={closeFiles} />)}
+          {sidePanelShell("space-node-panel", "Component details", "Resize component details panel", nodeVisible, () => setNodeOpen(false),
+            graph && selectedNodeId && <NodeDetailsPanel nodeId={selectedNodeId} graph={graph} details={flowchart.result?.details ?? {}} documents={flowchart.result?.documents ?? []} onPreview={openGraphSource} onSelectNode={openNode} onClose={() => setNodeOpen(false)} risk={currentRisk} />)}
+          {sidePanelShell("space-risk-panel", "Risk flags", "Resize risk flags panel", riskVisible, () => setRiskOpen(false),
+            <RiskPanel risk={risk} documents={flowchart.result?.documents ?? []} onPreview={openGraphSource} onSelectNode={openNode} onClose={() => setRiskOpen(false)} />)}
+
+          <main aria-label="Space workspace" className="login-grid-bg relative min-w-0 flex-1 overflow-hidden">
+            {!ready ? (
+              <div role="status" className="flex h-full min-h-48 items-center justify-center gap-2 px-6 text-sm text-[#78766e]">
+                {!connectionError && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}
+                {connectionError ? "Unable to connect. Refresh to try again." : "Loading your space..."}
               </div>
-            </>
-          )}
-        </main>
+            ) : !space ? (
+              <div className="flex h-full min-h-48 flex-col items-center justify-center px-6 text-center">
+                <h2 className="text-lg font-semibold">Space not found</h2>
+                <p className="mt-2 text-xs leading-5 text-[#78766e]">This space is unavailable or does not belong to your account.</p>
+                <Link to="/spaces" className="mt-5 rounded text-xs font-medium underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-[#b9d8f3]">Return to your spaces</Link>
+              </div>
+            ) : (
+              <>
+                {/* Both views stay mounted (hidden, not removed) so the flowchart layout and chat history survive switching. */}
+                <div aria-hidden={view !== "flowchart"} inert={view !== "flowchart"} className={`absolute inset-0 ${view === "flowchart" ? "" : "invisible"}`}>
+                  <SpaceFlowchartView spaceKey={space.id.toString()} archived={space.archived} documentCount={documentsReady ? documents.length : null} flowchart={flowchart} selectedNodeId={nodeOpen ? selectedNodeId : null} onSelectNode={openNode} onPreview={openGraphSource} risk={risk} onOpenRisks={openRisks} />
+                </div>
+                <div aria-hidden={view !== "insights"} inert={view !== "insights"} className={`absolute inset-0 ${view === "insights" ? "" : "invisible"}`}>
+                  <SpaceInsightsView key={space.id.toString()} active={view === "insights"} />
+                </div>
+              </>
+            )}
+          </main>
         </div>
       </div>
       {previewDocument && <DocumentPreviewDialog key={`${id}:${previewDocument.id}:${previewPage}`} document={previewDocument} initialPage={previewPage} onClose={() => setPreviewId(null)} />}

@@ -1,28 +1,28 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dagre from "@dagrejs/dagre";
-import { Controls, Handle, MarkerType, Panel, Position, ReactFlow, useNodesState, type Edge, type Node, type NodeProps } from "@xyflow/react";
-import { Building2, Cable, CircleDot, Cpu, Fan, FileText, Landmark, ListChecks, Network, ShieldCheck, SlidersHorizontal, Users, Zap } from "lucide-react";
+import { Controls, Handle, MarkerType, Panel, Position, ReactFlow, useNodesState, type Edge, type Node, type NodeProps, type ReactFlowInstance } from "@xyflow/react";
+import { FileText, LoaderCircle, RefreshCw, RotateCcw, ShieldAlert } from "lucide-react";
 import type { GraphResult, SpaceGraph } from "../../../../spacetimedb/src/validation/flowchart";
 import { withoutDanglingEdges } from "../../../../spacetimedb/src/validation/flowchart";
 import "@xyflow/react/dist/style.css";
 import "./space-flowchart.css";
+import { categories } from "./flowchart-categories";
+import { severityStyles } from "./risk-styles";
+import type { RiskAssessment } from "../../../../spacetimedb/src/validation/risk";
+import type { SpaceRisk } from "@/hooks/use-space-risk";
 
-const categories = {
-  property: { icon: Building2, color: "#7c83db" }, utility: { icon: Cable, color: "#53a986" },
-  contract: { icon: FileText, color: "#699ad1" }, party: { icon: Users, color: "#ad83c5" },
-  financial: { icon: Landmark, color: "#c5a24e" }, obligation: { icon: ListChecks, color: "#cf8b70" },
-  equipment: { icon: Cpu, color: "#7e91b0" }, cooling: { icon: Fan, color: "#55a8ad" },
-  power: { icon: Zap, color: "#c5a24e" }, network: { icon: Network, color: "#8d83c5" },
-  controls: { icon: SlidersHorizontal, color: "#699ad1" }, safety: { icon: ShieldCheck, color: "#b58b79" },
-  other: { icon: CircleDot, color: "#8b929b" },
-};
-type ComponentNode = Node<{ component: SpaceGraph["nodes"][number]; filenames: Record<string, string>; onPreview: (id: bigint, page: number) => void }, "component">;
+type NodeRiskBadge = RiskAssessment["overview"][string];
+type ComponentNode = Node<{ component: SpaceGraph["nodes"][number]; filenames: Record<string, string>; onPreview: (id: bigint, page: number) => void; risk?: NodeRiskBadge }, "component">;
 function ComponentCard({ data, selected }: NodeProps<ComponentNode>) {
   const item = data.component;
   const { icon: Icon, color } = categories[item.category];
   const sources = [...new Map(item.evidence.map(source => [source.documentId, source])).values()];
-  return <article className={`flow-component ${selected ? "is-selected" : ""}`}>
+  const risk = data.risk;
+  return <article className={`flow-component ${selected ? "is-selected" : ""} ${risk ? `risk-${risk.severity} risk-${risk.kind}` : ""}`}>
     <Handle type="target" position={Position.Left} isConnectable={false} />
+    {risk && <span className="flow-component-risk" title={risk.kind === "direct" ? "Risk from this component's own evidence" : "Risk from an upstream dependency"}>
+      <span className="flow-component-risk-dot" style={{ background: severityStyles[risk.severity].dot }} />{severityStyles[risk.severity].label}{risk.kind === "propagated" ? " · upstream" : ""}
+    </span>}
     <h3 title={item.label}>{item.label}</h3>
     <div className="flow-component-category"><Icon size={13} style={{ color }} /><span>{item.category}</span></div>
     <p className="flow-component-description nodrag nowheel" title={item.description}>{item.description}</p>
@@ -35,8 +35,34 @@ function ComponentCard({ data, selected }: NodeProps<ComponentNode>) {
   </article>;
 }
 const nodeTypes = { component: ComponentCard };
+const NO_RISK: RiskAssessment["overview"] = {};
 
-function layout(graph: SpaceGraph, documents: GraphResult["documents"], onPreview: (id: bigint, page: number) => void) {
+const toolbarButton = "inline-flex cursor-pointer items-center gap-1.5 rounded px-1.5 py-0.5 font-medium text-[#37352f] transition-colors hover:bg-[#f3f2ee] focus-visible:outline-2 focus-visible:outline-[#b9d8f3] disabled:cursor-default disabled:opacity-50";
+
+/** Runs the risk agent on demand and summarizes its latest result. */
+function RiskControl({ risk, disabled, onOpenRisks }: { risk: SpaceRisk; disabled: boolean; onOpenRisks?: () => void }) {
+  const { result, assessment, busy, error, analyze } = risk;
+  if (busy) return <span role="status" className="inline-flex items-center gap-1.5 py-0.5 text-[#37352f]" title={result?.stage || "Starting risk analysis"}>
+    <LoaderCircle aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" />{result?.stage || "Analyzing risk..."}
+  </span>;
+  const current = assessment && !result?.stale;
+  return <span className="inline-flex flex-wrap items-center gap-1">
+    {current ? <button type="button" onClick={onOpenRisks} className={toolbarButton} title="Open risk flags">
+      <ShieldAlert aria-hidden="true" className="size-3.5" />
+      {(["critical", "high", "elevated"] as const).filter(level => assessment.counts[level] > 0).map(level => <span key={level} className="inline-flex items-center gap-1">
+        <span aria-hidden="true" className="size-2 rounded-full" style={{ background: severityStyles[level].dot }} />{assessment.counts[level]} {severityStyles[level].label.toLowerCase()}
+      </span>)}
+      {!assessment.flags.length && "No risks found"}
+    </button> : null}
+    <button type="button" onClick={analyze} disabled={disabled} className={toolbarButton} title={disabled ? "Wait for the flowchart to finish" : current ? "Run the risk agent again" : "Run the risk agent on this flowchart"}>
+      {current ? <><RefreshCw aria-hidden="true" className="size-3" /><span className="sr-only">Re-run risk analysis</span></>
+        : <><ShieldAlert aria-hidden="true" className="size-3.5 text-[#b4372c]" />{assessment ? "Risk out of date · Re-run" : "Analyze risk"}</>}
+    </button>
+    {error && <span role="alert" className="max-w-64 truncate text-[#b4372c]" title={error}>{error}</span>}
+  </span>;
+}
+
+function layout(graph: SpaceGraph, documents: GraphResult["documents"], onPreview: (id: bigint, page: number) => void, risk: RiskAssessment["overview"]) {
   graph = withoutDanglingEdges(graph);
   const engine = new dagre.graphlib.Graph({ multigraph: true });
   engine.setGraph({ rankdir: "LR", ranksep: 150, nodesep: 55, marginx: 40, marginy: 40 });
@@ -47,7 +73,7 @@ function layout(graph: SpaceGraph, documents: GraphResult["documents"], onPrevie
   const filenames = Object.fromEntries(documents.map(doc => [doc.id, doc.filename]));
   const nodes: ComponentNode[] = graph.nodes.map(component => {
     const position = engine.node(component.id);
-    return { id: component.id, type: "component", position: { x: position.x - 150, y: position.y - 135 }, data: { component, filenames, onPreview } };
+    return { id: component.id, type: "component", position: { x: position.x - 150, y: position.y - 135 }, data: { component, filenames, onPreview, risk: risk[component.id] } };
   });
   const edges: Edge[] = graph.edges.map(edge => ({
     id: edge.id, source: edge.source, target: edge.target, type: "default", label: edge.label,
@@ -59,8 +85,16 @@ function layout(graph: SpaceGraph, documents: GraphResult["documents"], onPrevie
   return { nodes, edges };
 }
 
-export function SpaceFlowchart({ graph, documents, onPreview, status = "ready" }: { graph: SpaceGraph; documents: GraphResult["documents"]; onPreview: (id: bigint, page: number) => void; status?: GraphResult["status"] }) {
-  const initial = useMemo(() => layout(graph, documents, onPreview), [graph, documents, onPreview]);
+export function SpaceFlowchart({ graph, documents, onPreview, status = "ready", selectedNodeId = null, onSelectNode, risk, onOpenRisks, onRegenerate, regenerating = false, regenerateDisabled = false }: {
+  graph: SpaceGraph; documents: GraphResult["documents"]; onPreview: (id: bigint, page: number) => void; status?: GraphResult["status"];
+  selectedNodeId?: string | null; onSelectNode?: (nodeId: string) => void;
+  risk?: SpaceRisk; onOpenRisks?: () => void;
+  onRegenerate?: () => void; regenerating?: boolean; regenerateDisabled?: boolean;
+}) {
+  const [instance, setInstance] = useState<ReactFlowInstance<ComponentNode> | null>(null);
+  // Hide an out-of-date assessment from the cards; the toolbar offers a re-run.
+  const overviewRisk = risk?.assessment && !risk.result?.stale ? risk.assessment.overview : NO_RISK;
+  const initial = useMemo(() => layout(graph, documents, onPreview, overviewRisk), [graph, documents, onPreview, overviewRisk]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes);
   const topology = `${graph.nodes.map(node => node.id).join(",")}|${graph.edges.map(edge => edge.id).join(",")}`;
   const previousTopology = useRef(topology);
@@ -69,13 +103,30 @@ export function SpaceFlowchart({ graph, documents, onPreview, status = "ready" }
     previousTopology.current = topology;
     setNodes(current => initial.nodes.map(node => {
       const previous = current.find(item => item.id === node.id);
-      return previous && !changed ? { ...node, position: previous.position, selected: previous.selected } : node;
+      return { ...node, position: previous && !changed ? previous.position : node.position, selected: !!previous?.selected };
     }));
   }, [initial, topology, setNodes]);
+  // The details panel owns selection: highlight the node and bring it into view.
+  useEffect(() => {
+    setNodes(current => current.map(node => node.selected === (node.id === selectedNodeId) ? node : { ...node, selected: node.id === selectedNodeId }));
+  }, [selectedNodeId, setNodes, topology]);
+  useEffect(() => {
+    if (selectedNodeId && instance) void instance.fitView({ nodes: [{ id: selectedNodeId }], duration: 350, maxZoom: Math.max(instance.getZoom(), 0.8) });
+  }, [selectedNodeId, instance]);
   return <div className="space-flowchart login-grid-bg h-full min-h-64 w-full" role="region" aria-label="Document component flowchart">
-    <ReactFlow nodes={nodes} edges={initial.edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} fitView fitViewOptions={{ padding: 0.2, maxZoom: 1 }} minZoom={0.1} maxZoom={2.5} nodesConnectable={false} edgesReconnectable={false} deleteKeyCode={null}>
+    <ReactFlow nodes={nodes} edges={initial.edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} onInit={setInstance}
+      onNodeClick={(event, node) => { if (!(event.target as HTMLElement).closest("button")) onSelectNode?.(node.id); }} elementsSelectable={false} fitView fitViewOptions={{ padding: 0.2, maxZoom: 1 }} minZoom={0.1} maxZoom={2.5} nodesConnectable={false} edgesReconnectable={false} deleteKeyCode={null}>
       <Controls showInteractive={false} />
-      <Panel position="top-left" className="rounded-md border border-neutral-200 bg-white/95 px-3 py-2 text-[11px] text-neutral-500 shadow-sm">{status === "processing" ? "Building graph · " : status === "failed" ? "Incomplete graph · " : ""}{graph.nodes.length} components · {graph.edges.length} relationships</Panel>
+      <Panel position="top-left" className="flex max-w-[calc(100%-2rem)] flex-wrap items-center gap-2 rounded-md border border-neutral-200 bg-white/95 px-3 py-1.5 text-[11px] text-neutral-500 shadow-sm">
+        <span className="py-0.5">{status === "processing" ? "Building graph · " : status === "failed" ? "Incomplete graph · " : ""}{graph.nodes.length} components · {graph.edges.length} relationships</span>
+        {risk && <><span aria-hidden="true" className="h-4 w-px bg-neutral-200" /><RiskControl risk={risk} disabled={status === "processing"} onOpenRisks={onOpenRisks} /></>}
+      </Panel>
+      {onRegenerate && <Panel position="top-right" className="rounded-md border border-neutral-200 bg-white/95 px-1.5 py-1 text-[11px] shadow-sm">
+        <button type="button" onClick={onRegenerate} disabled={regenerating || regenerateDisabled} aria-busy={regenerating} className={toolbarButton} title={regenerating ? "Regenerating flowchart" : "Regenerate the flowchart from this space's documents"}>
+          {regenerating ? <LoaderCircle aria-hidden="true" className="size-3 animate-spin motion-reduce:animate-none" /> : <RotateCcw aria-hidden="true" className="size-3" />}
+          {regenerating ? "Regenerating..." : "Regenerate"}
+        </button>
+      </Panel>}
     </ReactFlow>
   </div>;
 }

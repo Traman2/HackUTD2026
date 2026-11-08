@@ -8,9 +8,12 @@ import { presignS3, storageConfig } from "../clients/s3";
 import { savedFlowchart, sourceFingerprint } from "./flowchart-storage";
 
 type Context = ProcedureCtx<InferSchema<typeof spacetimedb>>;
-function requestGraph(ctx: Context, spaceId: bigint, generate: boolean) {
+export type AgentOperation = "get" | "generate" | "risk";
+// Returns an owner-authorized, short-lived signed capability for the local agent.
+export function requestAgent(ctx: Context, spaceId: bigint, operation: AgentOperation) {
+  const generate = operation === "generate";
   const snapshot = ctx.withTx(tx => {
-    const space = requireSpace(tx, spaceId, generate);
+    const space = requireSpace(tx, spaceId, operation !== "get");
     const all = Array.from(tx.db.documents.spaceId.filter(spaceId));
     if (generate && all.some(doc => !doc.verifiedAt)) throw new SenderError("Finish or remove unverified document uploads before generating the flowchart.");
     return { space, documents: all.filter(doc => doc.verifiedAt).sort((a, b) => a.id < b.id ? -1 : 1) };
@@ -32,7 +35,7 @@ function requestGraph(ctx: Context, spaceId: bigint, generate: boolean) {
   // The database host blocks outbound loopback/private HTTP. Return an
   // owner-authorized, short-lived signed capability for the local agent instead.
   const payload = JSON.stringify({
-    operation: generate ? "generate" : "get",
+    operation,
     expiresAt: ctx.timestamp.toDate().getTime() + 60_000,
     manifest,
   });
@@ -40,7 +43,7 @@ function requestGraph(ctx: Context, spaceId: bigint, generate: boolean) {
   return JSON.stringify({ payload, signature });
 }
 
-export const generate_space_flowchart = spacetimedb.procedure({ spaceId: t.u64() }, t.string(), (ctx, { spaceId }) => requestGraph(ctx, spaceId, true));
+export const generate_space_flowchart = spacetimedb.procedure({ spaceId: t.u64() }, t.string(), (ctx, { spaceId }) => requestAgent(ctx, spaceId, "generate"));
 export const get_space_flowchart = spacetimedb.procedure({ spaceId: t.u64() }, t.string(), (ctx, { spaceId }) => ctx.withTx(tx => {
   requireSpace(tx, spaceId);
   return JSON.stringify(savedFlowchart(tx, spaceId));

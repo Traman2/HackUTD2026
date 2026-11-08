@@ -2,10 +2,11 @@ import { schema, t } from "spacetimedb/server";
 import { users } from "./models/user";
 import { sessions } from "./models/session";
 import { spaces } from "./models/space";
-import { documents, uploads, documentArtifacts, documentAnalyses, documentMetadata } from "./models/document";
-import { flowcharts, flowchartPageFindings } from "./models/flowchart";
+import { documents, uploads, documentArtifacts, documentMetadata } from "./models/document";
+import { flowcharts, flowchartOverviewCache } from "./models/flowchart";
+import { riskAssessments, riskEvents } from "./models/risk";
 
-const spacetimedb = schema({ users, sessions, spaces, documents, uploads, documentArtifacts, documentAnalyses, documentMetadata, flowcharts, flowchartPageFindings }, {
+const spacetimedb = schema({ users, sessions, spaces, documents, uploads, documentArtifacts, documentMetadata, flowcharts, flowchartOverviewCache, riskAssessments, riskEvents }, {
   env: {
     AGENT_URL: t.option(t.string()),
     AGENT_API_KEY: t.option(t.string()),

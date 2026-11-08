@@ -15,3 +15,11 @@
 .space-flowchart .react-flow__handle { width: 5px; height: 5px; border: 1px solid #fff; background: #b6bdc5; }
 .space-flowchart .react-flow__controls { overflow: hidden; border: 1px solid #e1e5e9; border-radius: 6px; box-shadow: 0 2px 6px #2634450a; }
 .space-flowchart .react-flow__controls-button { background: #fff; border-color: #edf0f3; color: #646b73; }
+.space-flowchart .react-flow__node { cursor: pointer; }
+.flow-component:hover { border-color: #d3d7dc; }
+.flow-component-risk { position: absolute; top: -10px; right: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 2px 7px; border: 1px solid #e7eaed; border-radius: 999px; background: #fff; color: #4b4f56; font-size: 9px; font-weight: 600; box-shadow: 0 1px 3px #2634450f; }
+.flow-component-risk-dot { width: 7px; height: 7px; border-radius: 999px; }
+.flow-component.risk-critical { border: 2px solid #e5877e; }
+.flow-component.risk-high { border: 2px solid #eda36c; }
+.flow-component.risk-elevated { border: 2px solid #e6c463; }
+.flow-component.risk-propagated { border-style: dashed; }

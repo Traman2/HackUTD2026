@@ -7,18 +7,22 @@ import { type Infer as __Infer } from "spacetimedb";
 
 // Import all procedure arg schemas
 import * as AgentFlowchartStoreProcedure from "../agent_flowchart_store_procedure.ts";
+import * as AnalyzeSpaceRiskProcedure from "../analyze_space_risk_procedure.ts";
 import * as AskAgentProcedure from "../ask_agent_procedure.ts";
 import * as CleanupDocumentUploadProcedure from "../cleanup_document_upload_procedure.ts";
 import * as ConfirmDocumentUploadProcedure from "../confirm_document_upload_procedure.ts";
 import * as CreateSpaceWithIdProcedure from "../create_space_with_id_procedure.ts";
 import * as GenerateSpaceFlowchartProcedure from "../generate_space_flowchart_procedure.ts";
 import * as GetSpaceFlowchartProcedure from "../get_space_flowchart_procedure.ts";
+import * as GetSpaceRiskProcedure from "../get_space_risk_procedure.ts";
 import * as RequestDocumentDownloadProcedure from "../request_document_download_procedure.ts";
 import * as RequestDocumentUploadProcedure from "../request_document_upload_procedure.ts";
 import * as RetryDocumentUploadProcedure from "../retry_document_upload_procedure.ts";
 
 export type AgentFlowchartStoreArgs = __Infer<typeof AgentFlowchartStoreProcedure.params>;
 export type AgentFlowchartStoreResult = __Infer<typeof AgentFlowchartStoreProcedure.returnType>;
+export type AnalyzeSpaceRiskArgs = __Infer<typeof AnalyzeSpaceRiskProcedure.params>;
+export type AnalyzeSpaceRiskResult = __Infer<typeof AnalyzeSpaceRiskProcedure.returnType>;
 export type AskAgentArgs = __Infer<typeof AskAgentProcedure.params>;
 export type AskAgentResult = __Infer<typeof AskAgentProcedure.returnType>;
 export type CleanupDocumentUploadArgs = __Infer<typeof CleanupDocumentUploadProcedure.params>;
@@ -31,6 +35,8 @@ export type GenerateSpaceFlowchartArgs = __Infer<typeof GenerateSpaceFlowchartPr
 export type GenerateSpaceFlowchartResult = __Infer<typeof GenerateSpaceFlowchartProcedure.returnType>;
 export type GetSpaceFlowchartArgs = __Infer<typeof GetSpaceFlowchartProcedure.params>;
 export type GetSpaceFlowchartResult = __Infer<typeof GetSpaceFlowchartProcedure.returnType>;
+export type GetSpaceRiskArgs = __Infer<typeof GetSpaceRiskProcedure.params>;
+export type GetSpaceRiskResult = __Infer<typeof GetSpaceRiskProcedure.returnType>;
 export type RequestDocumentDownloadArgs = __Infer<typeof RequestDocumentDownloadProcedure.params>;
 export type RequestDocumentDownloadResult = __Infer<typeof RequestDocumentDownloadProcedure.returnType>;
 export type RequestDocumentUploadArgs = __Infer<typeof RequestDocumentUploadProcedure.params>;

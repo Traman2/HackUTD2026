@@ -1,155 +1,167 @@
 import { createHash } from "node:crypto";
-import { StateGraph, START, END } from "@langchain/langgraph";
+import { z } from "zod";
+import { StateGraph, Send, START, END } from "@langchain/langgraph";
 import { bedrockModelId } from "../clients/bedrock.ts";
-import { graphSchema, validateGraph, type GraphManifest, type SpaceGraph } from "../validation/flowchart.ts";
+import { graphDetailsSchema, graphSchema, validateGraph, type GraphManifest, type SpaceGraph } from "../validation/flowchart.ts";
 import { documentFactsSchema, type AnalyzedDocument } from "../validation/document-facts.ts";
 import type { SpacetimeGraphStore } from "./spacetime-graph-store.ts";
 import { downloadDocument, GraphInputError } from "./document-source.ts";
-import { FlowchartState, DocumentExtractionState } from "./flowchart-state.ts";
+import { FlowchartState, type FlowchartStateType } from "./flowchart-state.ts";
 import { boundedMap } from "./bounded-map.ts";
-import { prepareDocument, extractDocumentBatch, combineDocumentBatches, METADATA_VERSION, type DocumentBatch } from "./extract-document.ts";
-import { buildRelationshipCandidates, sparseOverview, selectRelationshipOverview, OVERVIEW_PROMPT } from "./relationship-graph.ts";
+import { prepareDocument, extractDocumentBatch, combineDocumentBatches, METADATA_VERSION } from "./extract-document.ts";
+import { buildRelationshipCandidates, detailsFor, singletonMembers, sparseOverview, selectRelationshipOverview, OVERVIEW_PROMPT } from "./relationship-graph.ts";
 
 export { GraphInputError, validateS3Url } from "./document-source.ts";
 
+const MAX_PAGES = 200;
+const MAX_BYTES = 100 * 1024 * 1024;
+// Concurrent extract_document workers. Each normally makes one model call.
+const EXTRACTION_CONCURRENCY = 2;
+const overviewCacheSchema = z.object({ graph: graphSchema, details: graphDetailsSchema, members: z.record(z.string(), z.array(z.string())) });
+
+/*
+ * START -> load_cached_metadata --(Send per uncached PDF)--> extract_document (x N, parallel)
+ *                     |                                            |
+ *                     +-------------(all cached)-------------------+--> build_relationship_candidates
+ *       -> select_relationship_overview -> save_flowchart -> END
+ */
 export function buildFlowchartWorkflow(manifest: GraphManifest, store: SpacetimeGraphStore, signal: AbortSignal) {
-  const originals = new Map<string, Buffer>();
+  const modelId = bedrockModelId();
+  const documentsById = new Map(manifest.documents.map(doc => [doc.id, doc]));
+  // Runtime bookkeeping shared by parallel workers for progress previews and the
+  // corpus page budget. Graph state remains the source of truth for results.
   const completed = new Map<string, AnalyzedDocument>();
   const pageCounts = new Map<string, number>();
-  const modelId = bedrockModelId();
-  const ordered = () => manifest.documents.flatMap(doc => completed.has(doc.id) ? [completed.get(doc.id)!] : []);
+  const totalPages = () => [...pageCounts.values()].reduce((sum, count) => sum + count, 0);
+  const inManifestOrder = (docs: AnalyzedDocument[]) => manifest.documents.flatMap(doc => docs.filter(item => item.documentId === doc.id));
   const inventory = (docs: AnalyzedDocument[]) => docs.map(doc => ({ id: doc.documentId, filename: doc.filename, pages: doc.pages }));
   const validate = (graph: SpaceGraph, docs: AnalyzedDocument[]) => validateGraph(graphSchema.parse(graph), new Map(docs.map(doc => [doc.documentId, doc.pages])));
+
+  // Serialized so concurrent document completions cannot overwrite newer previews.
   let checkpointQueue = Promise.resolve();
   const checkpoint = () => {
     checkpointQueue = checkpointQueue.then(async () => {
-      const docs = ordered();
+      const docs = inManifestOrder([...completed.values()]);
       if (!docs.length) return;
-      const graph = sparseOverview(buildRelationshipCandidates(docs));
-      await store.checkpoint(validate(graph, docs), inventory(docs), `Extracted ${docs.length}/${manifest.documents.length} documents; building relationship overview`);
+      const candidates = buildRelationshipCandidates(docs);
+      const graph = validate(sparseOverview(candidates.graph), docs);
+      await store.checkpoint(graph, inventory(docs), `Extracted ${docs.length}/${manifest.documents.length} documents`, detailsFor(graph, candidates.details));
     });
     return checkpointQueue;
   };
 
-  async function analyzeDocument(doc: GraphManifest["documents"][number]): Promise<AnalyzedDocument> {
-    let batches: DocumentBatch[] = [];
-    const documentWorkflow = new StateGraph(DocumentExtractionState)
-      .addNode("prepare_pdf", async () => {
-        signal.throwIfAborted();
-        const bytes = originals.get(doc.id);
-        if (!bytes) throw new GraphInputError(`Source PDF unavailable: ${doc.filename}.`);
-        originals.delete(doc.id);
-        const prepared = await prepareDocument(bytes, doc.filename);
-        batches = prepared.batches;
-        pageCounts.set(doc.id, prepared.pages);
-        if ([...pageCounts.values()].reduce((sum, count) => sum + count, 0) > 200) throw new GraphInputError("The corpus exceeds the 200-page generation limit. Completed documents are saved.");
-        return { pages: prepared.pages, batchCount: batches.length };
-      })
-      .addNode("extract_metadata_and_facts", async state => {
-        signal.throwIfAborted();
-        await store.stage(manifest, `Extracting ${doc.filename}${state.batchCount > 1 ? `, section ${state.batchIndex + 1}/${state.batchCount}` : ""} (${completed.size}/${manifest.documents.length} complete)`);
-        const facts = await extractDocumentBatch({ documentId: doc.id, filename: doc.filename,
-          batch: batches[state.batchIndex]!, batchIndex: state.batchIndex, batchCount: state.batchCount, spaceId: manifest.spaceId, signal });
-        // Release image data as soon as its extraction call has completed.
-        batches[state.batchIndex] = { pages: [] };
-        return { parts: [...state.parts, facts], batchIndex: state.batchIndex + 1 };
-      })
-      .addNode("save_document_metadata", async state => {
-        const facts = combineDocumentBatches(state.parts);
-        await store.saveDocumentMetadata({ documentId: doc.id, checksumSha256: doc.checksumSha256,
-          pipelineVersion: METADATA_VERSION, modelId, pages: state.pages, facts });
-        const result: AnalyzedDocument = { documentId: doc.id, filename: doc.filename, pages: state.pages, facts };
-        completed.set(doc.id, result);
-        await checkpoint();
-        return { result, parts: [] };
-      })
-      .addEdge(START, "prepare_pdf")
-      .addEdge("prepare_pdf", "extract_metadata_and_facts")
-      .addConditionalEdges("extract_metadata_and_facts", state => state.batchIndex < state.batchCount
-        ? "extract_metadata_and_facts" : "save_document_metadata", ["extract_metadata_and_facts", "save_document_metadata"])
-      .addEdge("save_document_metadata", END)
-      .compile();
-    try {
-      const state = await documentWorkflow.invoke({}, { signal, recursionLimit: 250,
-        runName: "space-documents.document-workflow", tags: ["document-metadata"], metadata: { spaceId: manifest.spaceId, documentId: doc.id } });
-      if (!state.result) throw new GraphInputError(`No metadata was saved for ${doc.filename}.`);
-      return state.result;
-    } finally { batches = []; }
+  async function loadCachedMetadata(): Promise<Partial<FlowchartStateType>> {
+    signal.throwIfAborted();
+    if (!manifest.documents.length) throw new GraphInputError("Add PDF documents before generating.");
+    if (manifest.documents.reduce((sum, doc) => sum + doc.sizeBytes, 0) > MAX_BYTES) throw new GraphInputError("The corpus exceeds the 100 MiB source limit.");
+    await store.stage(manifest, "Checking saved document metadata");
+    const cached = await boundedMap(manifest.documents, 3, async doc => {
+      const raw = await store.getDocumentMetadata({ documentId: doc.id, checksumSha256: doc.checksumSha256, pipelineVersion: METADATA_VERSION, modelId });
+      if (!raw || typeof raw !== "object") return null;
+      const value = raw as Partial<AnalyzedDocument>;
+      const facts = documentFactsSchema.safeParse(value.facts);
+      if (!facts.success || !Number.isInteger(value.pages) || value.pages! < 1 || value.documentId !== doc.id) return null;
+      const result: AnalyzedDocument = { documentId: doc.id, filename: doc.filename, pages: value.pages!, facts: facts.data };
+      completed.set(doc.id, result);
+      pageCounts.set(doc.id, result.pages);
+      return result;
+    });
+    if (totalPages() > MAX_PAGES) throw new GraphInputError(`The corpus exceeds the ${MAX_PAGES}-page generation limit.`);
+    if (completed.size) await checkpoint();
+    return {
+      analyses: cached.filter((doc): doc is AnalyzedDocument => doc !== null),
+      pendingIds: manifest.documents.filter(doc => !completed.has(doc.id)).map(doc => doc.id),
+    };
+  }
+
+  // One worker per uncached PDF: download, read pages, extract each bounded
+  // section with one structured call, then persist the document's metadata.
+  async function extractDocument(state: FlowchartStateType): Promise<Partial<FlowchartStateType>> {
+    const doc = documentsById.get(state.documentId);
+    if (!doc) throw new GraphInputError("Unknown document in generation request.");
+    signal.throwIfAborted();
+    await store.stage(manifest, `Reading ${doc.filename} (${completed.size}/${manifest.documents.length} complete)`);
+    const { pages, batches } = await prepareDocument(await downloadDocument(doc, signal), doc.filename);
+    pageCounts.set(doc.id, pages);
+    if (totalPages() > MAX_PAGES) throw new GraphInputError(`The corpus exceeds the ${MAX_PAGES}-page generation limit. Completed documents are saved.`);
+    const parts = [];
+    for (let index = 0; index < batches.length; index++) {
+      signal.throwIfAborted();
+      await store.stage(manifest, `Extracting ${doc.filename}${batches.length > 1 ? `, section ${index + 1}/${batches.length}` : ""} (${completed.size}/${manifest.documents.length} complete)`);
+      parts.push(await extractDocumentBatch({ documentId: doc.id, filename: doc.filename, batch: batches[index]!,
+        batchIndex: index, batchCount: batches.length, spaceId: manifest.spaceId, signal }));
+      batches[index] = { pages: [] }; // Release rendered page images promptly.
+    }
+    const facts = combineDocumentBatches(parts);
+    await store.saveDocumentMetadata({ documentId: doc.id, checksumSha256: doc.checksumSha256, pipelineVersion: METADATA_VERSION, modelId, pages, facts });
+    const result: AnalyzedDocument = { documentId: doc.id, filename: doc.filename, pages, facts };
+    completed.set(doc.id, result);
+    await checkpoint();
+    return { analyses: [result] };
+  }
+
+  async function buildCandidates(state: FlowchartStateType): Promise<Partial<FlowchartStateType>> {
+    await store.stage(manifest, "Matching equipment IDs and joining relationships across documents");
+    const { graph, details } = buildRelationshipCandidates(inManifestOrder(state.analyses));
+    return { candidates: graph, candidateDetails: details };
+  }
+
+  async function selectOverview(state: FlowchartStateType): Promise<Partial<FlowchartStateType>> {
+    await store.stage(manifest, "Selecting a clear relationship overview");
+    const analyses = inManifestOrder(state.analyses);
+    const cacheKey = createHash("sha256").update(JSON.stringify(["relationship-overview-v5", manifest.namespace, manifest.owner,
+      manifest.spaceId, manifest.fingerprint, METADATA_VERSION, modelId, OVERVIEW_PROMPT, analyses])).digest("hex");
+    const cached = overviewCacheSchema.safeParse(await store.getCachedResult(cacheKey));
+    if (cached.success) {
+      try { return { graph: validate(cached.data.graph, analyses), details: detailsFor(cached.data.graph, cached.data.details),
+        members: { ...singletonMembers(cached.data.graph), ...cached.data.members } }; }
+      catch { /* Rebuild incompatible cached graphs. */ }
+    }
+    const overview = await selectRelationshipOverview(state.candidates, state.candidateDetails, analyses, signal, manifest.spaceId);
+    validate(overview.graph, analyses);
+    await store.saveCachedResult(cacheKey, overview);
+    return overview;
+  }
+
+  async function saveFlowchart(state: FlowchartStateType): Promise<Partial<FlowchartStateType>> {
+    const analyses = inManifestOrder(state.analyses);
+    // The full published network backs risk propagation; the overview is only
+    // what is drawn. Findings are omitted to bound size (risk uses conditions
+    // and issues), and citations are trimmed to three per item.
+    const trim = <T extends { evidence: unknown[] }>(item: T) => ({ ...item, evidence: item.evidence.slice(0, 3) });
+    const networkDetails = Object.fromEntries(Object.entries(state.candidateDetails).map(([id, item]) => [id, { ...item, findings: [] }]));
+    await store.saveNetwork({ graph: { nodes: state.candidates.nodes.map(trim), edges: state.candidates.edges.map(trim) },
+      details: networkDetails, members: { ...singletonMembers(state.graph), ...state.members } });
+    await store.save(manifest, validate(state.graph, analyses), inventory(analyses), detailsFor(state.graph, state.details));
+    return {};
   }
 
   const workflow = new StateGraph(FlowchartState)
-    .addNode("load_cached_metadata", async () => {
-      signal.throwIfAborted();
-      if (!manifest.documents.length) throw new GraphInputError("Add PDF documents before generating.");
-      if (manifest.documents.reduce((sum, doc) => sum + doc.sizeBytes, 0) > 100 * 1024 * 1024) throw new GraphInputError("The corpus exceeds the 100 MiB source limit.");
-      await store.stage(manifest, "Checking saved document metadata");
-      const cached = await boundedMap(manifest.documents, 3, async doc => {
-        const raw = await store.getDocumentMetadata({ documentId: doc.id, checksumSha256: doc.checksumSha256, pipelineVersion: METADATA_VERSION, modelId });
-        if (!raw || typeof raw !== "object") return null;
-        const value = raw as AnalyzedDocument;
-        const parsed = documentFactsSchema.safeParse(value.facts);
-        if (!parsed.success || !Number.isInteger(value.pages) || value.pages < 1 || value.documentId !== doc.id) return null;
-        const result = { documentId: doc.id, filename: doc.filename, pages: value.pages, facts: parsed.data };
-        completed.set(doc.id, result); pageCounts.set(doc.id, value.pages);
-        return result;
-      });
-      if ([...pageCounts.values()].reduce((sum, count) => sum + count, 0) > 200) throw new GraphInputError("The corpus exceeds the 200-page generation limit.");
-      if (completed.size) await checkpoint();
-      return { analyses: cached.filter((doc): doc is AnalyzedDocument => doc !== null), missingIds: manifest.documents.filter(doc => !completed.has(doc.id)).map(doc => doc.id) };
-    })
-    .addNode("download_missing_sources", async state => {
-      await store.stage(manifest, `Downloading ${state.missingIds.length} uncached PDFs`);
-      const missing = new Set(state.missingIds);
-      await boundedMap(manifest.documents.filter(doc => missing.has(doc.id)), 3, async doc => {
-        originals.set(doc.id, await downloadDocument(doc, signal));
-      });
-      return {};
-    })
-    .addNode("extract_documents", async state => {
-      const missing = new Set(state.missingIds);
-      // Two document workflows run concurrently; each normally needs one model
-      // call. Larger PDFs loop over bounded sections without feeding history.
-      await boundedMap(manifest.documents.filter(doc => missing.has(doc.id)), 2, analyzeDocument);
-      return { analyses: ordered(), missingIds: [] };
-    })
-    .addNode("build_relationship_candidates", async state => {
-      await store.stage(manifest, "Matching asset IDs and joining document relationships");
-      return { graph: buildRelationshipCandidates(state.analyses) };
-    })
-    .addNode("select_relationship_overview", async state => {
-      await store.stage(manifest, "Selecting a clear relationship overview");
-      const cacheKey = createHash("sha256").update(JSON.stringify(["relationship-overview-v2", manifest.namespace, manifest.owner,
-        manifest.spaceId, manifest.fingerprint, METADATA_VERSION, modelId, OVERVIEW_PROMPT, state.analyses])).digest("hex");
-      const cached = graphSchema.safeParse(await store.getCachedResult(cacheKey));
-      if (cached.success) {
-        try { return { graph: validate(cached.data, state.analyses) }; } catch { /* Rebuild incompatible cached graphs. */ }
-      }
-      const graph = await selectRelationshipOverview(state.graph, state.analyses, signal, manifest.spaceId);
-      validate(graph, state.analyses);
-      await store.saveCachedResult(cacheKey, graph);
-      return { graph };
-    })
-    .addNode("save_flowchart", async state => {
-      await store.save(manifest, validate(state.graph, state.analyses), inventory(state.analyses));
-      return {};
-    })
+    .addNode("load_cached_metadata", loadCachedMetadata)
+    .addNode("extract_document", extractDocument)
+    .addNode("build_relationship_candidates", buildCandidates)
+    .addNode("select_relationship_overview", selectOverview)
+    .addNode("save_flowchart", saveFlowchart)
     .addEdge(START, "load_cached_metadata")
-    .addConditionalEdges("load_cached_metadata", state => state.missingIds.length
-      ? "download_missing_sources" : "build_relationship_candidates", ["download_missing_sources", "build_relationship_candidates"])
-    .addEdge("download_missing_sources", "extract_documents")
-    .addEdge("extract_documents", "build_relationship_candidates")
+    // Map: one Send per uncached PDF. The Send payload carries only the ID.
+    .addConditionalEdges("load_cached_metadata", state => state.pendingIds.length
+      ? state.pendingIds.map(documentId => new Send("extract_document", { documentId }))
+      : "build_relationship_candidates", ["extract_document", "build_relationship_candidates"])
+    // Reduce: the analyses reducer merges every worker's result before this runs.
+    .addEdge("extract_document", "build_relationship_candidates")
     .addEdge("build_relationship_candidates", "select_relationship_overview")
     .addEdge("select_relationship_overview", "save_flowchart")
     .addEdge("save_flowchart", END)
     .compile();
-  return { workflow, dispose: async () => { await checkpointQueue.catch(() => {}); originals.clear(); completed.clear(); pageCounts.clear(); } };
+  return { workflow, dispose: async () => { await checkpointQueue.catch(() => {}); completed.clear(); pageCounts.clear(); } };
 }
 
 export async function generateFlowchart(manifest: GraphManifest, store: SpacetimeGraphStore) {
   const signal = AbortSignal.timeout(20 * 60 * 1000);
   const { workflow, dispose } = buildFlowchartWorkflow(manifest, store, signal);
   try {
-    await workflow.invoke({}, { signal, recursionLimit: 30, runName: "space-flowchart.workflow", tags: ["metadata-to-relationships"],
+    await workflow.invoke({}, { signal, recursionLimit: 25, maxConcurrency: EXTRACTION_CONCURRENCY,
+      runName: "space-flowchart.workflow", tags: ["metadata-to-relationships"],
       metadata: { spaceId: manifest.spaceId, jobId: store.jobId, modelId: bedrockModelId(), metadataVersion: METADATA_VERSION } });
   } finally { await dispose(); }
 }

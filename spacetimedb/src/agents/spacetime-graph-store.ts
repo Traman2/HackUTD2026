@@ -1,6 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { DbConnection } from "../../../apps/web/src/module_bindings/index.ts";
-import { graphResultSchema, type GraphManifest, type GraphResult, type SpaceGraph } from "../validation/flowchart.ts";
+import { graphResultSchema, type GraphDetails, type GraphManifest, type GraphResult, type Network, type SpaceGraph } from "../validation/flowchart.ts";
+import { riskResultSchema, type RiskAssessment, type RiskResult } from "../validation/risk.ts";
 
 let pending: Promise<DbConnection> | undefined;
 function connect(): Promise<DbConnection> {
@@ -44,7 +45,16 @@ export class SpacetimeGraphStore {
   async stage(_manifest: GraphManifest, stage: string) { await this.call("stage", { stage }); }
   async fail(_manifest: GraphManifest, error: string) { await this.call("fail", { error }); }
   async getCachedResult(cacheKey: string): Promise<unknown> { return this.call("cacheGet", { cacheKey }); }
-  async saveCachedResult(cacheKey: string, findings: unknown) { await this.call("cacheSave", { cacheKey, findings }); }
-  async save(_manifest: GraphManifest, graph: SpaceGraph, documents: GraphResult["documents"]) { await this.call("save", { graph, documents }); }
-  async checkpoint(graph: SpaceGraph, documents: GraphResult["documents"], stage: string) { await this.call("checkpoint", { graph, documents, stage }); }
+  async saveCachedResult(cacheKey: string, result: unknown) { await this.call("cacheSave", { cacheKey, result }); }
+  async save(_manifest: GraphManifest, graph: SpaceGraph, documents: GraphResult["documents"], details: GraphDetails) { await this.call("save", { graph, documents, details }); }
+  async saveNetwork(network: Network) { await this.call("networkSave", network); }
+  // Risk jobs share the authenticated channel but have their own job lease.
+  async riskBegin(): Promise<boolean> { return (await this.call("riskBegin")).started === true; }
+  async riskGet(): Promise<RiskResult> { return riskResultSchema.parse(await this.call("riskGet")); }
+  async riskInputs(): Promise<unknown> { return this.call("riskInputs"); }
+  async riskStage(stage: string) { await this.call("riskStage", { stage }); }
+  async riskHeartbeat() { await this.call("riskHeartbeat"); }
+  async riskFail(error: string) { await this.call("riskFail", { error }); }
+  async riskSave(assessment: RiskAssessment) { await this.call("riskSave", { assessment }); }
+  async checkpoint(graph: SpaceGraph, documents: GraphResult["documents"], stage: string, details: GraphDetails) { await this.call("checkpoint", { graph, documents, stage, details }); }
 }

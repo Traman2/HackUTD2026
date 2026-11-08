@@ -24,6 +24,35 @@ export const graphSchema = z.object({
 });
 export type SpaceGraph = z.infer<typeof graphSchema>;
 
+export const conditionSchema = z.enum(["normal", "degraded", "out_of_service", "unverified", "unknown"]);
+export const findingKindSchema = z.enum(["measured", "vendor_claim", "recorded_status", "historical", "obligation"]);
+export const issueKindSchema = z.enum(["contradiction", "unverified_claim", "threshold_exceeded", "overdue", "missing_evidence"]);
+const sourced = { documentId: evidenceSchema.shape.documentId, page: z.number().int().positive() };
+// Everything known about one graph node beyond its card: names, per-source
+// conditions, labelled findings and review issues, each with its source page.
+export const nodeDetailsSchema = z.object({
+  aliases: z.array(z.string().min(1).max(160)).max(24),
+  conditions: z.array(z.object({ condition: conditionSchema, documentId: sourced.documentId })).max(40),
+  findings: z.array(z.object({ kind: findingKindSchema, statement: z.string().min(1).max(240), ...sourced })).max(60),
+  issues: z.array(z.object({ kind: issueKindSchema, statement: z.string().min(1).max(300), ...sourced })).max(30),
+});
+export type NodeDetails = z.infer<typeof nodeDetailsSchema>;
+export const graphDetailsSchema = z.record(id, nodeDetailsSchema);
+export type GraphDetails = z.infer<typeof graphDetailsSchema>;
+export const emptyNodeDetails = (): NodeDetails => ({ aliases: [], conditions: [], findings: [], issues: [] });
+
+// The complete published relationship graph behind the overview, used for risk
+// propagation. members maps each overview node to the network nodes it merges.
+export const networkSchema = z.object({
+  graph: z.object({
+    nodes: z.array(graphSchema.shape.nodes.element).max(400),
+    edges: z.array(graphSchema.shape.edges.element).max(800),
+  }),
+  details: graphDetailsSchema,
+  members: z.record(id, z.array(id).min(1).max(50)),
+});
+export type Network = z.infer<typeof networkSchema>;
+
 export function withoutDanglingEdges<T extends { nodes: { id: string }[]; edges: { source: string; target: string }[] }>(graph: T): T {
   const ids = new Set(graph.nodes.map(node => node.id));
   return { ...graph, edges: graph.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target) && edge.source !== edge.target) };
@@ -50,7 +79,9 @@ export const graphResultSchema = z.object({
   error: z.string().nullable(),
   generatedAt: z.string().nullable(),
   graph: graphSchema.nullable(),
-  documents: z.array(z.object({ id: z.string(), filename: z.string(), pages: z.number().int().positive() })),
+  details: graphDetailsSchema.default({}),
+  documents: z.array(z.object({ id: z.string(), filename: z.string(), pages: z.number().int().positive(),
+    title: z.string().optional(), documentType: z.string().optional(), summary: z.string().optional() })),
 });
 export type GraphResult = z.infer<typeof graphResultSchema>;
 

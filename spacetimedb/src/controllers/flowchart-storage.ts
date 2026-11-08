@@ -5,8 +5,9 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 import { z } from "zod";
 import spacetimedb from "../schema";
-import { graphResultSchema, graphSchema, validateGraph, withoutDanglingEdges } from "../validation/flowchart";
-import { documentFactsSchema } from "../validation/document-facts";
+import { graphDetailsSchema, graphResultSchema, graphSchema, networkSchema, validateGraph, withoutDanglingEdges, type GraphDetails } from "../validation/flowchart";
+import { handleRiskOperation, RISK_OPERATIONS, type RiskOperation } from "./risk-storage";
+import { citedPages, documentFactsSchema } from "../validation/document-facts";
 
 type Tx = TransactionCtx<InferSchema<typeof spacetimedb>>;
 export function sourceFingerprint(documents: { id: bigint; checksumSha256: string; storageVersionId?: string; storageKey: string }[]) {
@@ -20,16 +21,27 @@ export function savedFlowchart(tx: Tx, spaceId: bigint) {
     row = tx.db.flowcharts.spaceId.update({ ...row, status: "failed", stage: "", error: "Generation was interrupted. Please retry.", updatedAt: tx.timestamp });
   }
   const documents = Array.from(tx.db.documents.spaceId.filter(spaceId)).filter(doc => doc.verifiedAt);
+  const graph = row.generatedAt ? withoutDanglingEdges({ nodes: row.nodes, edges: row.edges }) : null;
+  let details: GraphDetails = {};
+  if (graph && row.detailsJson) {
+    const parsed = graphDetailsSchema.safeParse(JSON.parse(row.detailsJson));
+    if (parsed.success) details = Object.fromEntries(graph.nodes.flatMap(node => parsed.data[node.id] ? [[node.id, parsed.data[node.id]!]] : []));
+  }
+  // Describe each cited source with its extracted title, type and summary.
+  const sources = row.documents.map(doc => {
+    const metadata = tx.db.documentMetadata.documentId.find(BigInt(doc.id));
+    return metadata ? { ...doc, title: metadata.title, documentType: metadata.documentType, summary: metadata.summary } : doc;
+  });
   return graphResultSchema.parse({ status: row.status, stale: !!row.generatedAt && row.fingerprint !== sourceFingerprint(documents),
     stage: row.stage, error: row.error ?? null, generatedAt: row.generatedAt?.toDate().toISOString() ?? null,
-    graph: row.generatedAt ? withoutDanglingEdges({ nodes: row.nodes, edges: row.edges }) : null, documents: row.documents,
+    graph, details, documents: sources,
   });
 }
 
 const serviceRequest = z.object({
   audience: z.literal("flowchart-store"), namespace: z.string(), owner: z.string(), spaceId: z.string().regex(/^[1-9]\d*$/),
   jobId: z.string().uuid(), expiresAt: z.number().int(),
-  operation: z.enum(["get", "begin", "stage", "heartbeat", "fail", "save", "checkpoint", "cacheGet", "cacheSave", "metadataGet", "metadataSave"]),
+  operation: z.enum(["get", "begin", "stage", "heartbeat", "fail", "save", "checkpoint", "cacheGet", "cacheSave", "metadataGet", "metadataSave", "networkSave", ...RISK_OPERATIONS]),
   data: z.record(z.string(), z.unknown()),
 });
 
@@ -51,6 +63,9 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
     if (!space || space.ownerUsername !== request.owner) throw new SenderError("Space not found.");
     const { operation, data, jobId } = request;
     if (operation === "get") return JSON.stringify(savedFlowchart(tx, spaceId));
+    if ((RISK_OPERATIONS as readonly string[]).includes(operation)) {
+      return handleRiskOperation(tx, { spaceId, owner: request.owner, jobId, operation: operation as RiskOperation, data });
+    }
     const leaseUntil = new Timestamp(tx.timestamp.microsSinceUnixEpoch + 120_000_000n);
     const row = tx.db.flowcharts.spaceId.find(spaceId);
     if (operation === "begin") {
@@ -62,6 +77,8 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
       const value = { spaceId, ownerUsername: space.ownerUsername, status: "processing", stage: "Downloading documents", error: undefined,
         fingerprint: row?.fingerprint ?? "", requestedFingerprint: fingerprint, jobId, leaseUntil, updatedAt: tx.timestamp,
         generatedAt: row?.generatedAt, nodes: row?.nodes ?? [], edges: row?.edges ?? [], documents: row?.documents ?? [],
+        // A new generation invalidates the previous network until it saves a new one.
+        detailsJson: row?.detailsJson ?? "", networkJson: "",
       };
       if (row) tx.db.flowcharts.spaceId.update(value); else tx.db.flowcharts.insert(value);
       return JSON.stringify({ started: true });
@@ -81,9 +98,7 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
       }
       const pages = z.number().int().positive().max(200).parse(data.pages);
       const facts = documentFactsSchema.parse(data.facts);
-      for (const entity of [...facts.entities, ...facts.relationships]) {
-        if (entity.evidence.some(item => item.page > pages)) throw new SenderError("Invalid document metadata page.");
-      }
+      if (citedPages(facts).some(page => page > pages)) throw new SenderError("Invalid document metadata page.");
       const factsJson = JSON.stringify(facts);
       if (factsJson.length > 500000) throw new SenderError("Document metadata is too large.");
       const value = { documentId: source.id, spaceId, filename: source.filename, checksumSha256: source.checksumSha256,
@@ -93,17 +108,27 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
       if (existing) tx.db.documentMetadata.documentId.update(value); else tx.db.documentMetadata.insert(value);
       return "null";
     }
+    if (operation === "networkSave") {
+      const network = networkSchema.parse(data);
+      const ids = new Set(network.graph.nodes.map(node => node.id));
+      if (network.graph.edges.some(edge => !ids.has(edge.source) || !ids.has(edge.target))) throw new SenderError("Network contains an invalid relationship.");
+      if (Object.values(network.members).flat().some(id => !ids.has(id))) throw new SenderError("Network membership refers to an unknown node.");
+      const networkJson = JSON.stringify(network);
+      if (networkJson.length > 900000) throw new SenderError("Network is too large.");
+      tx.db.flowcharts.spaceId.update({ ...row, networkJson, updatedAt: tx.timestamp, leaseUntil });
+      return "null";
+    }
     if (operation === "cacheGet") {
       const cacheKey = z.string().regex(/^[a-f0-9]{64}$/).parse(data.cacheKey);
-      const cache = tx.db.flowchartPageFindings.cacheKey.find(cacheKey);
-      return cache && cache.spaceId === spaceId && cache.ownerUsername === request.owner ? cache.findingsJson : "null";
+      const cache = tx.db.flowchartOverviewCache.cacheKey.find(cacheKey);
+      return cache && cache.spaceId === spaceId && cache.ownerUsername === request.owner ? cache.resultJson : "null";
     }
     if (operation === "cacheSave") {
       const cacheKey = z.string().regex(/^[a-f0-9]{64}$/).parse(data.cacheKey);
-      const findingsJson = JSON.stringify(data.findings);
-      if (findingsJson.length > 500000) throw new SenderError("Cached findings are too large.");
-      const value = { cacheKey, spaceId, ownerUsername: request.owner, findingsJson, createdAt: tx.timestamp };
-      if (tx.db.flowchartPageFindings.cacheKey.find(cacheKey)) tx.db.flowchartPageFindings.cacheKey.update(value); else tx.db.flowchartPageFindings.insert(value);
+      const resultJson = JSON.stringify(data.result);
+      if (resultJson.length > 500000) throw new SenderError("Cached overview is too large.");
+      const value = { cacheKey, spaceId, ownerUsername: request.owner, resultJson, createdAt: tx.timestamp };
+      if (tx.db.flowchartOverviewCache.cacheKey.find(cacheKey)) tx.db.flowchartOverviewCache.cacheKey.update(value); else tx.db.flowchartOverviewCache.insert(value);
     } else if (operation === "stage" || operation === "heartbeat") {
       const stage = operation === "stage" ? z.string().max(500).parse(data.stage) : row.stage;
       tx.db.flowcharts.spaceId.update({ ...row, stage, leaseUntil, updatedAt: tx.timestamp });
@@ -115,7 +140,15 @@ export const agent_flowchart_store = spacetimedb.procedure({ payload: t.string()
       const actual = Array.from(tx.db.documents.spaceId.filter(spaceId));
       if (documents.some(doc => !actual.some(source => String(source.id) === doc.id && source.verifiedAt))) throw new SenderError("A source document is no longer available.");
       validateGraph(graph, new Map(documents.map(doc => [doc.id, doc.pages])));
-      tx.db.flowcharts.spaceId.update({ ...row, nodes: graph.nodes, edges: graph.edges, documents,
+      const pages = new Map(documents.map(doc => [doc.id, doc.pages]));
+      const nodeIds = new Set(graph.nodes.map(node => node.id));
+      const details = Object.fromEntries(Object.entries(graphDetailsSchema.parse(data.details ?? {})).filter(([id]) => nodeIds.has(id)));
+      for (const item of Object.values(details)) {
+        if ([...item.findings, ...item.issues].some(source => source.page > (pages.get(source.documentId) ?? 0))) throw new SenderError("Graph details contain an invalid source reference.");
+      }
+      const detailsJson = JSON.stringify(details);
+      if (detailsJson.length > 900000) throw new SenderError("Graph details are too large.");
+      tx.db.flowcharts.spaceId.update({ ...row, nodes: graph.nodes, edges: graph.edges, documents, detailsJson,
         status: operation === "save" ? "ready" : "processing",
         stage: operation === "save" ? "" : z.string().max(500).parse(data.stage),
         error: undefined, fingerprint: row.requestedFingerprint, generatedAt: tx.timestamp, updatedAt: tx.timestamp, leaseUntil,

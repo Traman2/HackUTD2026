@@ -15,9 +15,16 @@ export const flowcharts = table({ public: false }, {
   fingerprint: t.string(), requestedFingerprint: t.string(), jobId: t.string(),
   leaseUntil: t.timestamp(), generatedAt: t.option(t.timestamp()), updatedAt: t.timestamp(),
   nodes: t.array(node), edges: t.array(edge), documents: t.array(source),
+  // Validated JSON written with the graph: per-node sidebar details (aliases,
+  // conditions, findings, issues) and the full published network behind the
+  // overview, used by the risk agent. Empty until a generation writes them.
+  detailsJson: t.string().default(""),
+  networkJson: t.string().default(""),
 });
 
-export const flowchartPageFindings = table({ public: false }, {
+// Cached overview-selection results, keyed by corpus fingerprint, model, prompt
+// and extracted facts, so an unchanged corpus skips the overview model call.
+export const flowchartOverviewCache = table({ public: false }, {
   cacheKey: t.string().primaryKey(), spaceId: t.u64().index("btree"),
-  ownerUsername: t.string(), findingsJson: t.string(), createdAt: t.timestamp(),
+  ownerUsername: t.string(), resultJson: t.string(), createdAt: t.timestamp(),
 });

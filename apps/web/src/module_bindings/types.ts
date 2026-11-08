@@ -10,24 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const DocumentAnalyses = __t.object("DocumentAnalyses", {
-  documentId: __t.u64(),
-  spaceId: __t.u64(),
-  checksumSha256: __t.string(),
-  storageBucket: __t.string(),
-  storageKey: __t.string(),
-  storageVersionId: __t.option(__t.string()),
-  documentType: __t.string(),
-  summary: __t.string(),
-  status: __t.string(),
-  error: __t.option(__t.string()),
-  processedPages: __t.u32(),
-  totalPages: __t.u32(),
-  modelId: __t.string(),
-  updatedAt: __t.timestamp(),
-});
-export type DocumentAnalyses = __Infer<typeof DocumentAnalyses>;
-
 export const DocumentArtifacts = __t.object("DocumentArtifacts", {
   id: __t.u64(),
   documentId: __t.u64(),
@@ -37,6 +19,25 @@ export const DocumentArtifacts = __t.object("DocumentArtifacts", {
   createdAt: __t.timestamp(),
 });
 export type DocumentArtifacts = __Infer<typeof DocumentArtifacts>;
+
+export const DocumentMetadata = __t.object("DocumentMetadata", {
+  documentId: __t.u64(),
+  spaceId: __t.u64(),
+  filename: __t.string(),
+  checksumSha256: __t.string(),
+  storageBucket: __t.string(),
+  storageKey: __t.string(),
+  storageVersionId: __t.option(__t.string()),
+  title: __t.string(),
+  documentType: __t.string(),
+  summary: __t.string(),
+  factsJson: __t.string(),
+  pages: __t.u32(),
+  modelId: __t.string(),
+  pipelineVersion: __t.string(),
+  updatedAt: __t.timestamp(),
+});
+export type DocumentMetadata = __Infer<typeof DocumentMetadata>;
 
 export const DocumentSummary = __t.object("DocumentSummary", {
   id: __t.u64(),
@@ -107,14 +108,14 @@ export const FlowchartNode = __t.object("FlowchartNode", {
 });
 export type FlowchartNode = __Infer<typeof FlowchartNode>;
 
-export const FlowchartPageFindings = __t.object("FlowchartPageFindings", {
+export const FlowchartOverviewCache = __t.object("FlowchartOverviewCache", {
   cacheKey: __t.string(),
   spaceId: __t.u64(),
   ownerUsername: __t.string(),
-  findingsJson: __t.string(),
+  resultJson: __t.string(),
   createdAt: __t.timestamp(),
 });
-export type FlowchartPageFindings = __Infer<typeof FlowchartPageFindings>;
+export type FlowchartOverviewCache = __Infer<typeof FlowchartOverviewCache>;
 
 export const FlowchartSource = __t.object("FlowchartSource", {
   id: __t.string(),
@@ -144,6 +145,8 @@ export const Flowcharts = __t.object("Flowcharts", {
   get documents() {
     return __t.array(FlowchartSource);
   },
+  detailsJson: __t.string(),
+  networkJson: __t.string(),
 });
 export type Flowcharts = __Infer<typeof Flowcharts>;
 
@@ -164,6 +167,30 @@ export const PdfUploadTicket = __t.object("PdfUploadTicket", {
   checksumSha256: __t.string(),
 });
 export type PdfUploadTicket = __Infer<typeof PdfUploadTicket>;
+
+export const RiskAssessments = __t.object("RiskAssessments", {
+  spaceId: __t.u64(),
+  ownerUsername: __t.string(),
+  status: __t.string(),
+  stage: __t.string(),
+  error: __t.option(__t.string()),
+  jobId: __t.string(),
+  leaseUntil: __t.timestamp(),
+  flowchartGeneratedAt: __t.option(__t.timestamp()),
+  assessmentJson: __t.string(),
+  generatedAt: __t.option(__t.timestamp()),
+  updatedAt: __t.timestamp(),
+});
+export type RiskAssessments = __Infer<typeof RiskAssessments>;
+
+export const RiskEvents = __t.object("RiskEvents", {
+  id: __t.u64(),
+  spaceId: __t.u64(),
+  jobId: __t.string(),
+  changesJson: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type RiskEvents = __Infer<typeof RiskEvents>;
 
 export const Sessions = __t.object("Sessions", {
   identity: __t.identity(),
